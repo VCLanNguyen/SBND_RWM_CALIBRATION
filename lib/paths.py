@@ -25,7 +25,7 @@ def set_paths(ntuple, out=None):
     global OUT, RUN1_SBND, RUN2_SBND
     for run, p in ntuple.items():
         if not p or not os.path.isfile(p):
-            raise FileNotFoundError(f'Run {run} ntuple not found: {p!r}')
+            raise FileNotFoundError(f'Run {run} ntuple not found: {p!r} -- set NTUPLE in the notebook Setup cell')
         RAW_TREE[run] = os.path.abspath(p)
     OUT = os.path.abspath(out) if out else OUT
     RUN1_SBND, RUN2_SBND = f'{OUT}/run1', f'{OUT}/run2'

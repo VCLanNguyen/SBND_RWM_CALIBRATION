@@ -25,10 +25,10 @@ lib/
 
 ## Inputs
 
-| Input | What | Variable |
+| Input | What | Set in |
 |---|---|---|
-| Run 1 ntuple | `TimingCalibAna` module v2, tree `timingcalib/timingCalibTree` (`run1_timing_calib_ntuple.root`, 1.7 GB) | `$SBND_RWM_NTUPLE_RUN1` |
-| Run 2 ntuple | same, Run 2 (`run2_timing_calib_ntuple.root`, 1.3 GB) | `$SBND_RWM_NTUPLE_RUN2` |
+| Run 1 ntuple | `TimingCalibAna` module v2, tree `timingcalib/timingCalibTree` (`run1_timing_calib_ntuple.root`, 1.7 GB) | `NTUPLE` in the Setup cell |
+| Run 2 ntuple | same, Run 2 (`run2_timing_calib_ntuple.root`, 1.3 GB) | `NTUPLE` in the Setup cell |
 
 - Any readable path works (local or Fermilab); the input files are never written to
 
@@ -45,7 +45,6 @@ lib/
 
 - The calibration CSVs are the ones used in the tech note; to apply them directly, point `CALIB_CSV` in `apply_calibration.ipynb` at them
 - How the ntuples were made (module, release, input datasets): `calibration/calibration.ipynb`, Setup › "Where the Input Ntuples Come From"
-- Each notebook's Setup cell reads these variables; the paths can also be typed there
 
 ## Environment
 
@@ -53,11 +52,17 @@ Python 3.10: `pip install -r requirements.txt`
 
 ## Run
 
-```bash
-export SBND_RWM_NTUPLE_RUN1=/pnfs/sbnd/persistent/users/lnguyen/RWM_Calibration/run1_timing_calib_ntuple.root
-export SBND_RWM_NTUPLE_RUN2=/pnfs/sbnd/persistent/users/lnguyen/RWM_Calibration/run2_timing_calib_ntuple.root
-export SBND_RWM_OUT=$PWD/output          # default: <repo>/output
+First set the paths at the top of each notebook's Setup cell ("Set these paths"):
 
+| Notebook | Paths |
+|---|---|
+| `calibration`, `segmentation`, `apply_calibration` | `NTUPLE` = your copy of the two ntuples; `CALIB_DIR` = output folder |
+| `overview` | `CALIB_DIR` |
+
+- `NTUPLE` is a placeholder (`/path/to/…`) and must be set; `CALIB_DIR` defaults to `<repo>/output` and must be the same in all four
+- Then:
+
+```bash
 cd calibration
 for nb in calibration overview segmentation apply_calibration; do
     jupyter nbconvert --to notebook --execute --inplace $nb.ipynb
@@ -66,9 +71,9 @@ done
 
 | Notebook | Time | Peak RAM | Writes |
 |---|---|---|---|
-| `calibration` | ~2.5 min (first run: builds the entry caches) | 2.2 GB | `$SBND_RWM_OUT/run{1,2}/sbnd_fine_calibration.csv` + `*_lean.pkl` caches |
-| `overview` | ~10 s | 0.3 GB | `$SBND_RWM_OUT/figures/calib_results_overview.png` |
-| `segmentation` | ~15 s | 1.2 GB | `$SBND_RWM_OUT/figures/calib_results_segments_run{1,2}.png` |
+| `calibration` | ~2.5 min (first run: builds the entry caches) | 2.2 GB | `CALIB_DIR/run{1,2}/sbnd_fine_calibration.csv` + `*_lean.pkl` caches |
+| `overview` | ~10 s | 0.3 GB | `CALIB_DIR/figures/calib_results_overview.png` |
+| `segmentation` | ~15 s | 1.2 GB | `CALIB_DIR/figures/calib_results_segments_run{1,2}.png` |
 | `apply_calibration` | ~15 s | 1.6 GB | nothing (table in memory) |
 
 Run order: `calibration` first; the other three read its CSVs (`segmentation` and `apply_calibration` also read the ntuples).
