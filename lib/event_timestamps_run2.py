@@ -207,7 +207,9 @@ t09d_linac_trip = datetime(2026, 5, 22, 2, 58, 14)             # DAQ 20142 "BNB 
 t10_comed_outage_min = datetime(2026, 5, 26, 14, 59, 51)       # planned beam-off for ComEd outages (DAQ 20153) -- last SBND hit
 t10e_intermittent_beam_min = datetime(2026, 6, 10, 13, 2, 45)  # DAQ 20218 "Intermittent beam (one hour down)"
 
-SEGMENT_A_RUNS = (19683, 19854)   # start of Run 2, not processed yet (red band)
+# Production Run 2A = runs 19683-19854 at the start of Run 2, not processed yet (red band): DAQ run log, run 19683 start → run 19854 end
+t00_run2a_start = datetime(2025, 10, 31, 17, 19, 56)
+t00_run2a_end = datetime(2026, 1, 23, 13, 10, 14)
 
 # --- Transition windows: beam changing between two stable states (chunks drawn grey) ---
 TRANSITION_WINDOWS = (

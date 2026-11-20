@@ -1,6 +1,6 @@
 """Run table and row-splitting helpers.
 
-- `build_run_table(df)`: one row per run (start/end/duration/entries) from the raw ntuple; `load_daq_runs`: DAQ run-log CSV
+- `build_run_table(df)`: one row per run (start/end/duration/entries) from the raw ntuple
 - Bad runs: the registries (`event_timestamps_run{1,2}.BAD_RUNS`)
 - `split_row_by_run`: split a run-group row at a timestamp (registry `FINE_SPLITS`)
 - Row convention (every table here, and every chunk built from them):
@@ -136,24 +136,3 @@ def build_fine_base(df, dfrun, groups, splits, spotty_min_gap=45, spotty_skip_s=
         base = split_row_by_run(base, df, g['run'], g['gap_end'], ts_col='ts')
         n_applied += 1
     return (base, n_applied, len(gaps)) if counts else base
-
-
-# --- DAQ run log (figures: Run 2 segment A time span) ---
-BEAM_CONFIG_RX = r'beam|BNB'
-NOBEAM_CONFIG_RX = r'nobeam'
-
-
-def load_daq_runs(path):
-    """DAQ run-log CSV (Google-sheet export, UTC) → run, start, end, config, `beam`.
-    - `beam`: config matches `BEAM_CONFIG_RX`, not `NOBEAM_CONFIG_RX`, not off-beam only (OffBeam without BNB)
-    - Rows with unparseable times dropped
-    """
-    d = pd.read_csv(path, header=1, skiprows=[2])
-    d = d[pd.to_numeric(d['Run'], errors='coerce').notna()]
-    out = pd.DataFrame(dict(run=d['Run'].astype(int), start=pd.to_datetime(d['Start time'], errors='coerce'),
-                            end=pd.to_datetime(d['End time'], errors='coerce'),
-                            config=d['Configuration name'].fillna('')))
-    cfg = out['config']
-    out['beam'] = (cfg.str.contains(BEAM_CONFIG_RX, case=False) & ~cfg.str.contains(NOBEAM_CONFIG_RX, case=False)
-                   & ~(cfg.str.contains('OffBeam', case=False) & ~cfg.str.contains('BNB')))
-    return out.dropna(subset=['start', 'end']).sort_values('start').reset_index(drop=True)
