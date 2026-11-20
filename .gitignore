@@ -1,0 +1,5 @@
+# outputs: production CSVs + lean-hit caches (lib/paths.py)
+output/
+*.pkl
+__pycache__/
+.ipynb_checkpoints/
