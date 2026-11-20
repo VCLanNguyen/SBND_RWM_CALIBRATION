@@ -41,8 +41,8 @@ lib/
 |---|---|---|
 | `run1_timing_calib_ntuple.root` | Run 1 input ntuple (1.7 GB) | `ee97140b68395c09360ca5ece60dff20` |
 | `run2_timing_calib_ntuple.root` | Run 2 input ntuple (1.3 GB) | `85b9ce86b14592f0d08889a36c015225` |
-| `run1_calibration.csv` | Run 1 calibration table = `calibration.ipynb` output `run1/sbnd_fine_calibration.csv` from these ntuples | `7b8e53bd217c3ec87ba1af0f81c347fa` |
-| `run2_calibration.csv` | Run 2 calibration table (same, Run 2) | `ac5ca39b254469663212463a2100892c` |
+| `run1_calibration.csv` | Run 1 calibration table = `calibration.ipynb` output `run1/sbnd_fine_calibration.csv` from these ntuples | `276e6ea68ec1bda1ca81e8fde97d9532` |
+| `run2_calibration.csv` | Run 2 calibration table (same, Run 2) | `cc156df89a5d95069efcc09c667eadae` |
 
 - The calibration tables are the ones used in the technote; to apply them directly, point `CALIB_CSV` in `apply_calibration.ipynb` at them
 - How the ntuples were made (module, release, input datasets): `calibration/calibration.ipynb`, Setup › "Where the Input Ntuples Come From"
