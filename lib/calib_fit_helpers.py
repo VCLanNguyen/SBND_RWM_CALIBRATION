@@ -683,7 +683,7 @@ PRODUCTION_COLS = ['run', 'start', 'end', 'entries', 'fit_entries', 'period', 'p
                    'n_buckets', 'window_offset', *EDGE_KEYS, *WEAK_KEYS]
 
 
-LABEL_COLS = ('segment', 'constants', 'bunch_condition', 'logs')   # `labels=` below
+LABEL_COLS = ('segment', 'segment_status', 'constants', 'bunch_condition', 'logs')   # `labels=` below
 
 
 def production_table(fine_df, skipped_reasons, cols, labels):

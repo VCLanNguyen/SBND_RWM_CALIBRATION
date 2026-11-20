@@ -18,8 +18,7 @@ t04d_brf19_disconnected = datetime(2026, 2, 4, 17, 8, 59)     # [SPLIT] Booster 
 t04e_feb07_offset_step = datetime(2026, 2, 7, 16, 11, 27)     # [SPLIT] run 19887 -- +0.30 ns offset step, width flat, no beam gap; cause unknown
 t04c_beam_rate_normal = datetime(2026, 2, 9, 22, 26, 51)      # [SPLIT] run 19891 -- rate 1.8 → 17.9 hits/min after the "beam tests of the day" (DAQ 19887 / 19891)
 
-t05_feb17_downtime_min = datetime(2026, 2, 17, 20, 30, 0)     # announced downtime start; ends the Jan-Feb high-σ period = wide / normal segment boundary
-t05_feb17_beam_return = datetime(2026, 2, 17, 22, 34, 34)     # [SPLIT] run 19911 first hit after the 122.5-min beam gap of the announced downtime
+t05_feb17_beam_return = datetime(2026, 2, 17, 22, 34, 34)     # [SPLIT] run 19911 first hit after the 122.5-min beam gap of the announced downtime; wide / normal segment boundary
 
 t05a_run19913_start = datetime(2026, 2, 19, 6, 11, 2)         # [SPLIT] run 19913 first hit
 t05a_run19913_narrow_end = datetime(2026, 2, 19, 8, 26, 0)    # [SPLIT] end of the narrow start of run 19913 (SBND σ 1.39 vs ~1.8 after, AD flat); not segmented
@@ -41,7 +40,8 @@ t06a_narrow_bunch2_off = datetime(2026, 4, 2, 19, 11, 43)     # [SPLIT] run 2002
 
 t07b_bnf_network_start = datetime(2026, 4, 8, 22, 3, 21)      # DAQ 20055 "BNF went down due to a network switch issue" -- last SBND hit
 t08a_power_outage_start = datetime(2026, 4, 27, 18, 8, 5)     # DAQ 20084 "Sitewide Power Outage" -- last SBND hit
-t09b_downtime_may11_start = datetime(2026, 5, 11, 14, 58, 54) # beam downtime (run 20118 last hit); normal_a / normal_b segment boundary
+t09b_downtime_may11_start = datetime(2026, 5, 11, 14, 58, 54) # beam downtime (run 20118 last hit)
+t09b_downtime_may11_end = datetime(2026, 5, 13, 19, 4, 35)     # first hit, run 20128; normal_a / normal_b segment boundary
 
 t09c_beam_return = datetime(2026, 5, 20, 16, 51, 3)           # [SPLIT] beam back after a 5-min beam gap (run 20139), width high ~1 h after
 t09c_beam_return_settled = datetime(2026, 5, 20, 18, 1, 3)    # [SPLIT] width settled (−0.28 ns)
@@ -108,42 +108,44 @@ NARROW_BUNCH = (
     (t06a_narrow_bunch2_on, t06a_narrow_bunch2_off),
 )
 
-# --- Stacking segments: wide / normal_a / normal_b / narrow ---
-# - wide: chunk starts before the 02-17 downtime (Jan-Feb high σ)
-# - normal: everything after, except narrow-bunch chunks; cut at the 05-11 downtime into `NORMAL_PIECES`
-# - narrow: chunk overlaps a `NARROW_BUNCH` window
-# - Own beam state with only a few chunks → no segment (`NO_SEGMENT_WINDOWS`)
-NORMAL_PIECES = {
-    'normal_a': (None, t09b_downtime_may11_start),
-    'normal_b': (t09b_downtime_may11_start, None),
-}
-NO_SEGMENT_WINDOWS = {
-    'run19913_narrow': (t05a_run19913_start, t05a_run19913_narrow_end),
-}
-
+# --- Stacking segments: wide / normal_a / normal_b / narrow (TN Sec. 5.4, App. B) -- same format and rule as Run 1 ---
+# - One row per segment, like `FINE_SPLITS`: (number, name, windows, status, beam state, evidence); number None = own beam state, not segmented
+# - Boundary = first entry after the change (on a chunk edge); a chunk takes the innermost row whose window contains it (`registry.segment_row`)
+# - wide: Jan-Feb high σ, up to the 02-17 announced downtime
+# - normal: cut at the 05-11 downtime (chunk-σ stability scan over the ≥ 1 h SBND gaps)
+# - narrow: SBND-level narrow-bunch periods inside normal_a (bunch1 window includes its 18:19-19:55 normal gap; those chunks are skipped)
+SEGMENTS = (
+    (1, 'wide', ((None, t05_feb17_beam_return),), 'Stable', 'Wide bunches',
+     'Run start to the 17-Feb-2026 announced beam downtime (Jan-Feb high bunch width)'),
+    (2, 'normal_a', ((t05_feb17_beam_return, t09b_downtime_may11_end),), 'Stable', 'Normal bunches',
+     'Between the 17-Feb-2026 and 11-May-2026 beam downtimes'),
+    (3, 'normal_b', ((t09b_downtime_may11_end, None),), 'Stable', 'Normal bunches',
+     '11-May-2026 beam downtime (XARAPUCA works, SE Y wire bias trip) to the run end'),
+    (4, 'narrow', ((t05b_narrow_bunch0_on, t05b_narrow_bunch0_off), (t06_narrow_bunch1_on, t06_narrow_bunch1_off),
+                   (t06a_narrow_bunch2_sbnd_narrow, t06a_narrow_bunch2_off)), 'Stable', 'Narrow bunches',
+     'Narrow-bunch periods (Booster ELOG, ECL, DAQ log; raw RWM traces)'),
+    (None, 'run19913_narrow', ((t05a_run19913_start, t05a_run19913_narrow_end),), '', 'Short beam state',
+     'Narrow bunch study at the start of run 19913 (SBND only); 1 chunk'),
+)
+SEGMENT_NUMBER = {r[1]: r[0] for r in SEGMENTS if r[0] is not None}
+STACK_SEGMENTS = tuple(sorted(SEGMENT_NUMBER, key=SEGMENT_NUMBER.get))
+UNSTABLE_SEGMENTS = tuple(r[1] for r in SEGMENTS if r[3] == 'Unstable')   # none in Run 2
+NO_SEGMENT_WINDOWS = {r[1]: r[2][0] for r in SEGMENTS if r[0] is None}
+NO_SEGMENT_LABEL = 'Own beam state, not segmented'
 
 def is_unsegmented(start, end):
-    """True if a chunk [start, end] lies inside a `NO_SEGMENT_WINDOWS` entry."""
-    return _reg.inside(start, end, NO_SEGMENT_WINDOWS.values())
-
+    """True if a chunk [start, end] lies in an own beam state (`SEGMENTS` row with number None)."""
+    return _reg.is_unsegmented(SEGMENTS, start, end)
 
 def stack_segment(start, end):
-    """'wide' / 'normal_a' / 'normal_b' / 'narrow' for a chunk [start, end] (narrow wins, then the 02-17 downtime by chunk start, then
-    `NORMAL_PIECES` by chunk start); None inside `NO_SEGMENT_WINDOWS`."""
-    if is_unsegmented(start, end):
-        return None
-    if any(start < b and end > a for a, b in NARROW_BUNCH):
-        return 'narrow'
-    if start < t05_feb17_downtime_min:
-        return 'wide'
-    return next(name for name, (lo, hi) in NORMAL_PIECES.items() if (lo is None or start >= lo) and (hi is None or start < hi))
+    """Stacking segment of a chunk [start, end] (`registry.segment_row`); None if not segmented or straddling a boundary."""
+    return _reg.stack_segment(SEGMENTS, start, end)
 
 
 # --- Production label columns (as Run 1) ---
-# - segment: 1-4 = wide / normal_a / normal_b / narrow; None = no constants or not segmented
+# - segment: 1-4 = wide / normal_a / normal_b / narrow (`SEGMENTS`); None = no constants or not segmented; segment_status Stable / Unstable, '' when no segment
 # - CHUNK_NOTES = (start, end, bunch_condition, logs): reviewed chunks + skipped chunks; a chunk inside a window takes its label
 #   (Width Changing = bunch width, Step Changing = bunch position); otherwise fitted → 'Stable', skipped → '-'
-SEGMENT_NUMBER = {'wide': 1, 'normal_a': 2, 'normal_b': 3, 'narrow': 4}
 CHUNK_NOTES = (
     (datetime(2026, 2, 17, 10, 3, 18), datetime(2026, 2, 17, 20, 32, 6), 'Stable', 'Announced downtime from ~20:30 follows (checklist 19:25)'),
     (t05_feb17_beam_return, t05a_run19913_start, 'Stable', 'Beam back after the announced 02-17 downtime (checklist)'),
@@ -180,7 +182,7 @@ CHUNK_NOTES = (
 
 def chunk_labels(start, end, skip_reason=''):
     """Production label columns of one chunk [start, end] (`registry.chunk_labels`)."""
-    return _reg.chunk_labels(CHUNK_NOTES, SEGMENT_NUMBER, stack_segment, start, end, skip_reason)
+    return _reg.chunk_labels(CHUNK_NOTES, SEGMENTS, start, end, skip_reason)
 
 
 # ===== Figures (overview / segmentation notebooks): transition chunks + beam-condition overlays =====
@@ -201,7 +203,6 @@ t07_linac_outage_max = datetime(2026, 4, 6, 4, 10, 0)          # "beam back but 
 t07b_bnf_network_end = datetime(2026, 4, 11, 17, 26, 34)       # first hit, run 20067
 t08a_power_outage_end = datetime(2026, 5, 1, 20, 27, 4)        # first hit, run 20102
 t09_substation_trip = datetime(2026, 5, 2, 0, 30, 0)           # checklist: substation trip, beam down
-t09b_downtime_may11_end = datetime(2026, 5, 13, 19, 4, 35)     # first hit, run 20128
 t09d_linac_trip = datetime(2026, 5, 22, 2, 58, 14)             # DAQ 20142 "BNB downtime, linac trip and no ETA" -- last hit before the 3-h gap
 t10_comed_outage_min = datetime(2026, 5, 26, 14, 59, 51)       # planned beam-off for ComEd outages (DAQ 20153) -- last SBND hit
 t10e_intermittent_beam_min = datetime(2026, 6, 10, 13, 2, 45)  # DAQ 20218 "Intermittent beam (one hour down)"
@@ -216,7 +217,6 @@ TRANSITION_WINDOWS = (
     (t10b_llrf_study_start, t10b_new_freq_curve),
     (t10e_frf_work_burst, t10e_frf_loaded),
 )
-UNSTABLE_SEGMENTS = ()
 STUDY_WINDOWS = (
     (t04c_beam_tests_min, t04c_beam_tests_max),
 )

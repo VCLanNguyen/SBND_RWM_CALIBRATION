@@ -1,8 +1,8 @@
 # SBND RWM Timing Calibration
 
-Calibration of the SBND BNB bunch timing against the resistive wall monitor (RWM): for each time chunk of beam data (~18 000 slices of stable beam), the fitted centre of every bucket of the BNB spill, the bucket spacing (period), the bunch width σ and its skewness σR − σL. Applying it puts every neutrino slice on its bucket: `calib_time_ns` = slice time − bucket centre.
+Per-chunk calibration of SBND BNB bucket timing against the RWM: bucket centres, period, σ and σR − σL. Applying it puts every neutrino slice on its bucket: `calib_time_ns` = slice time − bucket centre.
 
-Method and results: SBND timing technote, Sec. "RWM Calibration".
+Method and results: SBND timing technote (SBN-doc-XXXXX, TODO), Sec. "RWM Calibration".
 
 ## Layout
 
@@ -89,13 +89,13 @@ One row per time chunk, in time order; skipped chunks are kept with empty consta
 | `window_offset` | bucket number = fit index (or edge slot) + `window_offset` (same number = same RF bucket in every chunk) |
 | `weak_slots`, `weak_positions`, `weak_pvalue` | next slot past the outermost bucket on each side: recorded, not used |
 | `period_chi2ndof`, `sigma_chi2ndof`, `n_buckets`, `fit_entries` | fit quality, buckets used, slices fitted |
-| `segment`, `constants`, `bunch_condition`, `logs`, `skip_reason` | stacking segment (1, 2, …), Yes / LowStats / FitFailed, beam condition and supporting log, why skipped |
+| `segment`, `segment_status`, `constants`, `bunch_condition`, `logs`, `skip_reason` | stacking segment (1, 2, …), its status (Stable / Unstable), Yes / LowStats / FitFailed, beam condition and supporting log, why skipped |
 
 How to use it on slices: `apply_calibration.ipynb`.
 
 ## Changing the calibration
 
-- Hard chunk boundaries, bad runs, segments, chunk labels: `lib/event_timestamps_run{1,2}.py` (`FINE_SPLITS`, `BAD_RUNS`, `stack_segment`, `CHUNK_NOTES`), then rerun `calibration.ipynb`
+- Hard chunk boundaries, bad runs, segments, chunk labels: `lib/event_timestamps_run{1,2}.py` (`FINE_SPLITS`, `BAD_RUNS`, `SEGMENTS`, `CHUNK_NOTES`), then rerun `calibration.ipynb`
 - Chunk size and fit settings: Setup cell of `calibration.ipynb` and the constants at the top of `lib/calib_fit_helpers.py`
 
 ## TODO

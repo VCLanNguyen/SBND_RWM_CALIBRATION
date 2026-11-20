@@ -11,8 +11,10 @@ from datetime import datetime, timedelta
 
 import registry as _reg
 
-t05_downtime_mar_start = datetime(2025, 3, 7, 5, 7, 22)       # beam downtime, KRF3 klystron replaced; before_a / before_b boundary
-t06_downtime_mar20_start = datetime(2025, 3, 20, 9, 58, 59)   # scheduled BNB shutdown (run 18334 end); before_b / before_c boundary
+t05_downtime_mar_start = datetime(2025, 3, 7, 5, 7, 22)       # beam downtime, KRF3 klystron replaced
+t05_downtime_mar_first_entry = datetime(2025, 3, 8, 4, 35, 24)   # first entry after the downtime (run 18301, low-intensity linac beam); before_a / before_b segment boundary
+t06_downtime_mar20_start = datetime(2025, 3, 20, 9, 58, 59)   # scheduled BNB shutdown (run 18334 end)
+t06_downtime_mar20_end = datetime(2025, 3, 21, 1, 41, 56)     # run 18340 start = first entry after the shutdown; before_b / before_c segment boundary
 
 t06a_beam_return_min = datetime(2025, 3, 21, 1, 41, 56)       # beam back after the shutdown, "expect higher intensity" (checklist); not segmented
 t06a_beam_return_max = datetime(2025, 3, 22, 15, 15, 15)      # first hit after the 14:10 → 15:15 beam gap
@@ -95,62 +97,55 @@ BAD_RUNS = (
     18549,
 )
 
-# --- Bunch-rotation periods ---
-ROTATION_PERIODS = {
-    'before': (None, t07_rotation_ramp_end),
-    'during': (t07_rotation_ramp_end, t07a_rotation_settled),
-    'after': (t07a_rotation_settled, None),
-}
-
-
-def rotation_period(start, end):
-    """'before' / 'during' / 'after' for a chunk [start, end]; None if it straddles a boundary."""
-    for name, (lo, hi) in ROTATION_PERIODS.items():
-        if (lo is None or start >= lo) and (hi is None or end <= hi):
-            return name
-    return None
-
-
-# --- Stacking segments: before_a / before_b / before_c / during / after ---
-# - 'before' cut at two beam downtimes into `BEFORE_PIECES` (boundary = downtime start: a chunk inside the downtime goes to the later piece)
-#   - before_b: KRF3 klystron recovery, reduced and stepping intensity, bunch width follows it → unstable segment
-# - Own beam state with only a few chunks → no segment (`NO_SEGMENT_WINDOWS`)
-BEFORE_PIECES = {
-    'before_a': (None, t05_downtime_mar_start),
-    'before_b': (t05_downtime_mar_start, t06_downtime_mar20_start),
-    'before_c': (t06_downtime_mar20_start, None),
-}
-NO_SEGMENT_WINDOWS = {'bnb_study': (t22_bnb_study_min, t22_bnb_study_max),
-                      'beam_return': (t06a_beam_return_min, t06a_beam_return_max),
-                      'may23_narrow': (t19b_may23_narrow_start, t19b_may23_narrow_end)}
-
+# --- Stacking segments: before_a / before_b / before_c / during / after (TN Sec. 5.4, App. B) ---
+# - One row per segment, like `FINE_SPLITS`: (number, name, windows, status, beam state, evidence); number None = own beam state, not segmented
+# - Boundary = first entry after the change (on a chunk edge); a chunk takes the innermost row whose window contains it (`registry.segment_row`)
+# - 'before' cut at two beam downtimes (chunk-σ stability scan over the ≥ 1 h SBND gaps)
+#   - before_b: KRF3 klystron recovery, reduced and stepping intensity, σ follows it → Unstable (no b / response / slice-correction product)
+#   - before_c starts after the `beam_return` window (2 chunks, not segmented)
+# - Own beam state with only a few chunks → not segmented
+#   - bnb_study: Jun 16 BNB bunch-width study, run 18518 = one chunk, σ 1.59 vs after-rotation mean 1.77 (std 0.05)
+#   - may23_narrow: 05-23 16:59 → 20:57 = one chunk, narrow throughout (σ 1.53 vs neighbours 1.79 / 1.78), flat inside
+SEGMENTS = (
+    (1, 'before_a', ((None, t05_downtime_mar_first_entry),), 'Stable', 'Before rotation',
+     'Run start to the 07-Mar-2025 beam downtime (KRF3 klystron replaced, checklist)'),
+    (2, 'before_b', ((t05_downtime_mar_first_entry, t06_downtime_mar20_end),), 'Unstable', 'Before rotation',
+     'Between the 07-Mar-2025 and 20-Mar-2025 beam downtimes; KRF3 klystron recovery, bunch width follows the stepping intensity'),
+    (3, 'before_c', ((t06_downtime_mar20_end, t07_rotation_ramp_end),), 'Stable', 'Before rotation',
+     '20-Mar-2025 scheduled BNB shutdown to the start of the bunch rotation commissioning'),
+    (4, 'during', ((t07_rotation_ramp_end, t07a_rotation_settled),), 'Stable', 'Rotation commissioning',
+     'Bunch rotation commissioning: width step at the start, width drop at the end (raw RWM traces, AD ELOG)'),
+    (5, 'after', ((t07a_rotation_settled, None),), 'Stable', 'After commissioning',
+     'End of the bunch rotation commissioning to the run end'),
+    (None, 'beam_return', ((t06a_beam_return_min, t06a_beam_return_max),), '', 'Short beam state',
+     'Beam return after the 20-Mar-2025 shutdown, "expect higher intensity" (checklist); 2 chunks'),
+    (None, 'may23_narrow', ((t19b_may23_narrow_start, t19b_may23_narrow_end),), '', 'Short beam state',
+     'Narrow bunches after a ~1 h BNB downtime (checklist); 1 chunk'),
+    (None, 'bnb_study', ((t22_bnb_study_min, t22_bnb_study_max),), '', 'Short beam state',
+     'BNB bunch-width study (DAQ log, AD ELOG); 1 chunk'),
+)
+SEGMENT_NUMBER = {r[1]: r[0] for r in SEGMENTS if r[0] is not None}
+STACK_SEGMENTS = tuple(sorted(SEGMENT_NUMBER, key=SEGMENT_NUMBER.get))
+UNSTABLE_SEGMENTS = tuple(r[1] for r in SEGMENTS if r[3] == 'Unstable')   # drawn black, not stacked
+NO_SEGMENT_WINDOWS = {r[1]: r[2][0] for r in SEGMENTS if r[0] is None}
+NO_SEGMENT_LABEL = 'Own beam state, not segmented'
 
 def is_unsegmented(start, end):
-    """True if a chunk [start, end] lies inside a `NO_SEGMENT_WINDOWS` entry."""
-    return _reg.inside(start, end, NO_SEGMENT_WINDOWS.values())
-
+    """True if a chunk [start, end] lies in an own beam state (`SEGMENTS` row with number None)."""
+    return _reg.is_unsegmented(SEGMENTS, start, end)
 
 def stack_segment(start, end):
-    """Stacking segment of a chunk [start, end]: None inside `NO_SEGMENT_WINDOWS`, else `rotation_period` ('before' → its `BEFORE_PIECES` piece);
-    None if it straddles a boundary."""
-    if is_unsegmented(start, end):
-        return None
-    p = rotation_period(start, end)
-    if p != 'before':
-        return p
-    for name, (lo, hi) in BEFORE_PIECES.items():
-        if (lo is None or start >= lo) and (hi is None or end <= hi):
-            return name
-    return None
+    """Stacking segment of a chunk [start, end] (`registry.segment_row`); None if not segmented or straddling a boundary."""
+    return _reg.stack_segment(SEGMENTS, start, end)
 
 
 # --- Production label columns ---
-# - segment: 1-5 = before_a / before_b / before_c / during / after (`stack_segment`), None = no constants or not segmented
+# - segment: 1-5 = before_a / before_b / before_c / during / after (`SEGMENTS`), None = no constants or not segmented
+# - segment_status: Stable / Unstable (`SEGMENTS`), '' when no segment
 # - constants: Yes / LowStats / FitFailed (from `skip_reason`)
 # - bunch_condition: from `CHUNK_NOTES` where investigated AND a log supports it; fitted chunks otherwise 'Stable', skipped '-'
 # - logs: one-line summary of the supporting log (checklist = ECL beam checklist, AD ELOG, DAQ log); '' if none
 # - a chunk takes the note of the window it lies inside (+ `registry.TRANSITION_SLACK`); windows don't overlap
-SEGMENT_NUMBER = {'before_a': 1, 'before_b': 2, 'before_c': 3, 'during': 4, 'after': 5}
 CHUNK_NOTES = (
     (datetime(2025, 3, 8, 4, 35, 24), datetime(2025, 3, 8, 6, 32, 50), '-', 'Linac issue, low-intensity beam overnight (checklist)'),
     (datetime(2025, 3, 10, 18, 11, 30), datetime(2025, 3, 10, 19, 33, 30), '-', 'KRF3 klystron work, BNB down ~30 min (checklist)'),
@@ -174,7 +169,7 @@ CHUNK_NOTES = (
 
 def chunk_labels(start, end, skip_reason=''):
     """Production label columns of one chunk [start, end] (`registry.chunk_labels`)."""
-    return _reg.chunk_labels(CHUNK_NOTES, SEGMENT_NUMBER, stack_segment, start, end, skip_reason)
+    return _reg.chunk_labels(CHUNK_NOTES, SEGMENTS, start, end, skip_reason)
 
 
 # ===== Figures (overview / segmentation notebooks): transition chunks + beam-condition overlays =====
@@ -183,7 +178,6 @@ def chunk_labels(start, end, skip_reason=''):
 t02_downtime_feb_start = datetime(2025, 2, 18, 13, 50, 0)     # beam downtime -- run 18255 last slice (DAQ "beam down" 13:54)
 t02_downtime_feb_end = datetime(2025, 2, 18, 23, 9, 45)       # run 18258, beam back
 t05_downtime_mar_end = datetime(2025, 3, 8, 7, 48, 49)        # run 18304, beam back
-t06_downtime_mar20_end = datetime(2025, 3, 21, 1, 41, 56)     # run 18340 start
 t09_downtime_apr08_start = datetime(2025, 4, 8, 8, 59, 39)    # beam downtime -- APSAIA power-cycle + network (runs 18407 / 18409)
 t09_downtime_apr08_end = datetime(2025, 4, 8, 17, 50, 18)
 t10_downtime_apr12_start = datetime(2025, 4, 12, 13, 28, 53)  # beam downtime -- no-beam config (run 18417)
@@ -217,7 +211,6 @@ TRANSITION_WINDOWS = (
     (t21_llrf4, t21_llrf4_settled),
     (t26a_jun30_widening_start, t28b_waterpump_ramp_end),
 )
-UNSTABLE_SEGMENTS = ('before_b',)   # bunch width not stable inside (drawn black, not stacked)
 STUDY_WINDOWS = (
     (t19b_may23_narrow_start, t19b_may23_narrow_end),   # narrow-bunch study
     (t22_bnb_study_min, t22_bnb_study_max),
