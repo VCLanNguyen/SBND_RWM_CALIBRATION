@@ -102,7 +102,7 @@ BAD_RUNS = (
 # - Boundary = first entry after the change (on a chunk edge); a chunk takes the innermost row whose window contains it (`registry.segment_row`)
 # - 'before' cut at two beam downtimes (chunk-σ stability scan over the ≥ 1 h SBND gaps)
 #   - before_b: KRF3 klystron recovery, reduced and stepping intensity, σ follows it → Unstable (no b / response / slice-correction product)
-#   - before_c starts after the `beam_return` window (2 chunks, not segmented)
+#   - before_c starts at the end of the `beam_return` window (2 chunks, not segmented): first entry 22-Mar-2025 15:15
 # - Own beam state with only a few chunks → not segmented
 #   - bnb_study: Jun 16 BNB bunch-width study, run 18518 = one chunk, σ 1.59 vs after-rotation mean 1.77 (std 0.05)
 #   - may23_narrow: 05-23 16:59 → 20:57 = one chunk, narrow throughout (σ 1.53 vs neighbours 1.79 / 1.78), flat inside
@@ -111,7 +111,7 @@ SEGMENTS = (
      'Run start to the 07-Mar-2025 beam downtime (KRF3 klystron replaced, checklist)'),
     (2, 'before_b', ((t05_downtime_mar_first_entry, t06_downtime_mar20_end),), 'Unstable', 'Before rotation',
      'Between the 07-Mar-2025 and 20-Mar-2025 beam downtimes; KRF3 klystron recovery, bunch width follows the stepping intensity'),
-    (3, 'before_c', ((t06_downtime_mar20_end, t07_rotation_ramp_end),), 'Stable', 'Before rotation',
+    (3, 'before_c', ((t06a_beam_return_max, t07_rotation_ramp_end),), 'Stable', 'Before rotation',
      '20-Mar-2025 scheduled BNB shutdown to the start of the bunch rotation commissioning'),
     (4, 'during', ((t07_rotation_ramp_end, t07a_rotation_settled),), 'Stable', 'Rotation commissioning',
      'Bunch rotation commissioning: width step at the start, width drop at the end (raw RWM traces, AD ELOG)'),
