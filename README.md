@@ -10,7 +10,7 @@ Method and results: SBND timing technote (SBN-doc-XXXXX, TODO), Sec. "RWM Calibr
 calibration/
   calibration.ipynb         ntuple → calibration table (one CSV per run)
   overview.ipynb            σ, σR − σL, period, intercept per chunk vs time (technote Fig. 22)
-  segmentation.ipynb        per-segment σ / σR − σL and stacked bunch (technote Figs. 23-24, Tab. calib_segments)
+  segmentation.ipynb        per-segment σ / σR − σL and stacked bunch (technote Figs. 23-24, Tab. 2)
   apply_calibration.ipynb   how to apply the table to the slices of an ntuple, step by step
 lib/
   calib_fit_helpers.py      ntuple loader, chunking, bucket finding, period / σ / skewness fits, CSV columns
@@ -50,7 +50,7 @@ lib/
 
 ## Environment
 
-Python 3.10 with numpy 2.2, pandas 2.3, scipy 1.15, uproot 5.7, matplotlib 3.10, jinja2 3.1 (pandas table styling), jupyter / nbconvert.
+Python 3.10: `pip install -r requirements.txt`
 
 ## Run
 
@@ -73,7 +73,7 @@ done
 | `segmentation` | ~15 s | 1.2 GB | `$SBND_RWM_OUT/figures/calib_results_segments_run{1,2}.png` |
 | `apply_calibration` | ~15 s | 1.6 GB | nothing (table in memory) |
 
-Run order: `calibration` first; the other three read its CSVs.
+Run order: `calibration` first; the other three read its CSVs (`segmentation` and `apply_calibration` also read the ntuples).
 
 ## Output: `sbnd_fine_calibration.csv` (one per run)
 
