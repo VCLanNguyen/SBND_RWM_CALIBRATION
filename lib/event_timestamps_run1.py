@@ -17,7 +17,7 @@ t06_downtime_mar20_start = datetime(2025, 3, 20, 9, 58, 59)   # scheduled BNB sh
 t06_downtime_mar20_end = datetime(2025, 3, 21, 1, 41, 56)     # run 18340 start = first entry after the shutdown; before_b / before_c segment boundary
 
 t06a_beam_return_min = datetime(2025, 3, 21, 1, 41, 56)       # beam back after the shutdown, "expect higher intensity" (checklist); not segmented
-t06a_beam_return_max = datetime(2025, 3, 22, 15, 15, 15)      # first hit after the 14:10 → 15:15 beam gap
+t06a_beam_return_max = datetime(2025, 3, 22, 15, 15, 15)      # first entry after the 14:10 → 15:15 beam gap
 
 t07_rotation_ramp_end = datetime(2025, 4, 3, 20, 0, 0)    # [SPLIT] run 18388 -- bunch rotation commissioning: width step (AD σ 1.83-2.11 → 2.06-2.34); before → during
 t07a_rotation_settled = datetime(2025, 4, 7, 21, 1, 34)   # [SPLIT] run 18394 -- rotation in operation, width 2.32 → 1.93 ns; during → after
@@ -37,7 +37,7 @@ t18_llrf3_settled = datetime(2025, 5, 6, 20, 26, 3)       # [SPLIT] run 18466 --
 
 t19a_may22_phase_flip_min = datetime(2025, 5, 22, 14, 35, 27)  # [SPLIT] run 18488 -- undeclared half-bucket (~9.5 ns) phase flip
 t19a_may22_phase_flip_max = datetime(2025, 5, 22, 17, 27, 13)  # [SPLIT] run 18488 -- back and settled
-t19b_may23_narrow_start = datetime(2025, 5, 23, 16, 59, 47)    # run 18488 -- first hit after a ~2 h beam gap = narrow state starts; not segmented
+t19b_may23_narrow_start = datetime(2025, 5, 23, 16, 59, 47)    # run 18488 -- first entry after a ~2 h beam gap = narrow state starts; not segmented
 t19b_may23_narrow_end = datetime(2025, 5, 23, 20, 58, 0)       # [SPLIT] run 18488 -- narrow stretch ends (σ 1.49 vs 1.77 after)
 
 t21_llrf4 = datetime(2025, 6, 2, 14, 29, 57)              # [SPLIT] run 18504 -- LLRF4 → digital, inside the 14:14-14:29 beam gap
@@ -101,7 +101,7 @@ BAD_RUNS = (
 # - One row per segment, like `FINE_SPLITS`: (number, name, windows, status, beam state, evidence); number None = own beam state, not segmented
 # - Boundary = first entry after the change (on a chunk edge); a chunk takes the innermost row whose window contains it (`registry.segment_row`)
 # - 'before' cut at two beam downtimes (chunk-σ stability scan over the ≥ 1 h SBND gaps)
-#   - before_b: KRF3 klystron recovery, reduced and stepping intensity, σ follows it → Unstable (no b / response / slice-correction product)
+#   - before_b: KRF3 klystron recovery, reduced and stepping intensity, σ follows it → Unstable (no stacked bunch)
 #   - before_c starts at the end of the `beam_return` window (2 chunks, not segmented): first entry 22-Mar-2025 15:15
 # - Own beam state with only a few chunks → not segmented
 #   - bnb_study: Jun 16 BNB bunch-width study, run 18518 = one chunk, σ 1.59 vs after-rotation mean 1.77 (std 0.05)
@@ -175,7 +175,7 @@ def chunk_labels(start, end, skip_reason=''):
 # ===== Figures (overview / segmentation notebooks): transition chunks + beam-condition overlays =====
 # - Not used by the calibration itself
 
-t02_downtime_feb_start = datetime(2025, 2, 18, 13, 50, 0)     # beam downtime -- run 18255 last slice (DAQ "beam down" 13:54)
+t02_downtime_feb_start = datetime(2025, 2, 18, 13, 50, 0)     # beam downtime -- run 18255 last entry (DAQ "beam down" 13:54)
 t02_downtime_feb_end = datetime(2025, 2, 18, 23, 9, 45)       # run 18258, beam back
 t05_downtime_mar_end = datetime(2025, 3, 8, 7, 48, 49)        # run 18304, beam back
 t09_downtime_apr08_start = datetime(2025, 4, 8, 8, 59, 39)    # beam downtime -- APSAIA power-cycle + network (runs 18407 / 18409)

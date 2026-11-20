@@ -3,7 +3,7 @@
 - Used by `calibration/calibration.ipynb` (`ev2`): `FINE_SPLITS`, `BAD_RUNS`, `chunk_labels`
 - Run 2 in the ntuple: runs 19857-20219 (24-Jan → 12-Jun-2026); runs 19683-19854 at the start of Run 2 are not processed yet
 - Timestamps in chronological order, numbered t04, t05, ...; letter suffixes keep the order; `[SPLIT]` = listed in `FINE_SPLITS`
-- Split time = SBND hit after the change, truncated to whole seconds (`ts < split` goes before)
+- Split time = SBND entry after the change, truncated to whole seconds (`ts < split` goes before)
 - All times UTC; AD times are 10-min grid points; ELOG / DAQ-log / ECL beam-checklist times (US Central) converted
 - Sources: SBND ntuple (bunch position / width per chunk, z = step / error), AD RWM traces, Booster ELOG, SBND ECL beam checklist, DAQ run log
 """
@@ -13,52 +13,52 @@ from datetime import datetime, timedelta
 import registry as _reg
 
 t04b_brf06_trip = datetime(2026, 1, 29, 0, 28, 26)            # [SPLIT] Booster ELOG BRF06 trip 01-28 18:28 CST; SBND offset +0.59 → +0.32 ns
-t04b_booster_rf_reset = datetime(2026, 1, 29, 2, 43, 58)      # [SPLIT] permit reset after BRF05-15 sparks 20:38-20:43 CST; run 19868 first hit, offset back +0.64 ns
+t04b_booster_rf_reset = datetime(2026, 1, 29, 2, 43, 58)      # [SPLIT] permit reset after BRF05-15 sparks 20:38-20:43 CST; run 19868 first entry, offset back +0.64 ns
 t04d_brf19_disconnected = datetime(2026, 2, 4, 17, 8, 59)     # [SPLIT] Booster ELOG "BRF19 was disconnected from the anode during the Linac downtime"; SBND offset −0.34 ns, width flat
 t04e_feb07_offset_step = datetime(2026, 2, 7, 16, 11, 27)     # [SPLIT] run 19887 -- +0.30 ns offset step, width flat, no beam gap; cause unknown
-t04c_beam_rate_normal = datetime(2026, 2, 9, 22, 26, 51)      # [SPLIT] run 19891 -- rate 1.8 → 17.9 hits/min after the "beam tests of the day" (DAQ 19887 / 19891)
+t04c_beam_rate_normal = datetime(2026, 2, 9, 22, 26, 51)      # [SPLIT] run 19891 -- rate 1.8 → 17.9 entries/min after the "beam tests of the day" (DAQ 19887 / 19891)
 
-t05_feb17_beam_return = datetime(2026, 2, 17, 22, 34, 34)     # [SPLIT] run 19911 first hit after the 122.5-min beam gap of the announced downtime; wide / normal segment boundary
+t05_feb17_beam_return = datetime(2026, 2, 17, 22, 34, 34)     # [SPLIT] run 19911 first entry after the 122.5-min beam gap of the announced downtime; wide / normal segment boundary
 
-t05a_run19913_start = datetime(2026, 2, 19, 6, 11, 2)         # [SPLIT] run 19913 first hit
+t05a_run19913_start = datetime(2026, 2, 19, 6, 11, 2)         # [SPLIT] run 19913 first entry
 t05a_run19913_narrow_end = datetime(2026, 2, 19, 8, 26, 0)    # [SPLIT] end of the narrow start of run 19913 (SBND σ 1.39 vs ~1.8 after, AD flat); not segmented
-t05a_run19913_end = datetime(2026, 2, 19, 20, 2, 33)          # run 19913 last hit; the run stopped for the Booster study
-t05b_narrow_bunch0_on = datetime(2026, 2, 19, 20, 19, 15)     # [SPLIT] run 19914 first hit -- Booster "Narrow Bunch Pre-Tune Study"; AD σ 1.34 → 0.87
-t05b_narrow_bunch0_off = datetime(2026, 2, 19, 21, 22, 57)    # [SPLIT] run 19917 first hit = first hit after "Studies are complete"
+t05a_run19913_end = datetime(2026, 2, 19, 20, 2, 33)          # run 19913 last entry; the run stopped for the Booster study
+t05b_narrow_bunch0_on = datetime(2026, 2, 19, 20, 19, 15)     # [SPLIT] run 19914 first entry -- Booster "Narrow Bunch Pre-Tune Study"; AD σ 1.34 → 0.87
+t05b_narrow_bunch0_off = datetime(2026, 2, 19, 21, 22, 57)    # [SPLIT] run 19917 first entry = first entry after "Studies are complete"
 
-t05b_beam_return_feb21 = datetime(2026, 2, 21, 17, 49, 20)    # [SPLIT] beam back after the 29 h downtime (run 19923 first hit)
+t05b_beam_return_feb21 = datetime(2026, 2, 21, 17, 49, 20)    # [SPLIT] beam back after the 29 h downtime (run 19923 first entry)
 t05b_beam_return_feb21_settled = datetime(2026, 2, 21, 19, 9, 20)  # [SPLIT] settling ends: offset +0.25 ns, width −0.21 ns
 
 t06_narrow_bunch1_on = datetime(2026, 3, 30, 17, 37, 39)      # [SPLIT] narrow bunch 1 on: AD σ 1.21 → 0.70; SBND width −0.20 ns
 t06_narrow_bunch1_gap_min = datetime(2026, 3, 30, 18, 19, 41) # back to normal inside run 20011: AD σ 0.71 → 1.22
 t06_narrow_bunch1_gap_max = datetime(2026, 3, 30, 19, 55, 23) # narrow again: AD σ 1.38 → 0.74
-t06_narrow_bunch1_beam_return = datetime(2026, 3, 30, 20, 44, 50)   # [SPLIT] run 20011 first hit after a 28.9-min beam gap inside narrow piece 2
+t06_narrow_bunch1_beam_return = datetime(2026, 3, 30, 20, 44, 50)   # [SPLIT] run 20011 first entry after a 28.9-min beam gap inside narrow piece 2
 t06_narrow_bunch1_off = datetime(2026, 3, 30, 21, 50, 41)     # [SPLIT] narrow bunch 1 off: AD σ 0.75 → 1.33; SBND width +0.26 ns
 t06a_narrow_bunch2_on = datetime(2026, 3, 31, 14, 20, 28)     # [SPLIT] narrow bunch 2 on: AD σ 1.33 → 0.69; DAQ "~30 min before the end of 20014"
-t06a_narrow_bunch2_sbnd_narrow = datetime(2026, 3, 31, 14, 30, 2)   # [SPLIT] first hit after 14:30 (run 20014): SBND narrow from here
-t06a_narrow_bunch2_off = datetime(2026, 4, 2, 19, 11, 43)     # [SPLIT] run 20020 first hit -- narrow bunch 2 off: AD σ 0.83 → 1.24; SBND width +0.11 ns
+t06a_narrow_bunch2_sbnd_narrow = datetime(2026, 3, 31, 14, 30, 2)   # [SPLIT] first entry after 14:30 (run 20014): SBND narrow from here
+t06a_narrow_bunch2_off = datetime(2026, 4, 2, 19, 11, 43)     # [SPLIT] run 20020 first entry -- narrow bunch 2 off: AD σ 0.83 → 1.24; SBND width +0.11 ns
 
-t07b_bnf_network_start = datetime(2026, 4, 8, 22, 3, 21)      # DAQ 20055 "BNF went down due to a network switch issue" -- last SBND hit
-t08a_power_outage_start = datetime(2026, 4, 27, 18, 8, 5)     # DAQ 20084 "Sitewide Power Outage" -- last SBND hit
-t09b_downtime_may11_start = datetime(2026, 5, 11, 14, 58, 54) # beam downtime (run 20118 last hit)
-t09b_downtime_may11_end = datetime(2026, 5, 13, 19, 4, 35)     # first hit, run 20128; normal_a / normal_b segment boundary
+t07b_bnf_network_start = datetime(2026, 4, 8, 22, 3, 21)      # DAQ 20055 "BNF went down due to a network switch issue" -- last SBND entry
+t08a_power_outage_start = datetime(2026, 4, 27, 18, 8, 5)     # DAQ 20084 "Sitewide Power Outage" -- last SBND entry
+t09b_downtime_may11_start = datetime(2026, 5, 11, 14, 58, 54) # beam downtime (run 20118 last entry)
+t09b_downtime_may11_end = datetime(2026, 5, 13, 19, 4, 35)     # first entry, run 20128; normal_a / normal_b segment boundary
 
 t09c_beam_return = datetime(2026, 5, 20, 16, 51, 3)           # [SPLIT] beam back after a 5-min beam gap (run 20139), width high ~1 h after
 t09c_beam_return_settled = datetime(2026, 5, 20, 18, 1, 3)    # [SPLIT] width settled (−0.28 ns)
 t09c_laser_notcher_fixed = datetime(2026, 5, 21, 1, 39, 27)   # [SPLIT] Booster laser notcher off ~19:30 → back 20:29 CDT; SBND offset ≈ −0.2 ns before
 
-t10_comed_outage_max = datetime(2026, 5, 30, 1, 16, 21)       # first SBND hit after the planned ComEd outages (run 20179)
+t10_comed_outage_max = datetime(2026, 5, 30, 1, 16, 21)       # first SBND entry after the planned ComEd outages (run 20179)
 t10a_cep400_beam_return = datetime(2026, 6, 3, 2, 40, 53)     # [SPLIT] beam back after the B:CEP400 fuse fix (Booster ELOG)
 t10a_injection_tune = datetime(2026, 6, 3, 4, 10, 56)         # [SPLIT] Booster injection tune; width ≈ 2.2 → 2.4 ns
 t10b_llrf_study_start = datetime(2026, 6, 3, 13, 51, 19)      # [SPLIT] Booster LLRF study, new frequency curve (ELOG); SBND offset 0.16 → 0.74 ns
-t10b_new_freq_curve = datetime(2026, 6, 3, 17, 44, 48)        # [SPLIT] run 20200 first hit -- new LLRF frequency curve in operation, offset flat ≈ +1.0 ns
+t10b_new_freq_curve = datetime(2026, 6, 3, 17, 44, 48)        # [SPLIT] run 20200 first entry -- new LLRF frequency curve in operation, offset flat ≈ +1.0 ns
 t10b_freq_curve_end = datetime(2026, 6, 4, 23, 37, 9)         # [SPLIT] run 20202 -- SBND offset 1.04 → 0.18 ns, width flat; cause unknown
 t10e_frf_work_burst = datetime(2026, 6, 10, 16, 54, 3)        # [SPLIT] Booster FRF frequency-curve work: offset +1.8 → +2.6 ns for 13 min (too few entries → skipped)
-t10e_frf_loaded = datetime(2026, 6, 10, 17, 34, 47)           # [SPLIT] first hit after a 28-min gap, new FRF loaded
+t10e_frf_loaded = datetime(2026, 6, 10, 17, 34, 47)           # [SPLIT] first entry after a 28-min gap, new FRF loaded
 
 
 # --- Hard chunk boundaries: (run, split time), chronological ---
-# - Narrow-bunch edges at AD 10-min resolution, refined to the SBND hit with the largest width step inside the AD bracket
+# - Narrow-bunch edges at AD 10-min resolution, refined to the SBND entry with the largest width step inside the AD bracket
 FINE_SPLITS = (
     (19867, t04b_brf06_trip),
     (19868, t04b_booster_rf_reset),
@@ -194,17 +194,17 @@ t01a_bad_quality_beam_min = datetime(2025, 11, 19, 6, 21, 14)  # DAQ 19714 "This
 t02_linac_low_intensity = datetime(2025, 12, 19, 6, 0, 0)      # LINAC station trouble, MCR "lower intensity" (AD σ step −0.13 ns)
 t04c_beam_tests_min = datetime(2026, 2, 9, 15, 56, 37)         # DAQ 19887 "stopped ... for the beam tests of the day" (runs 19888-19890)
 t04c_beam_tests_max = t04c_beam_rate_normal                   # DAQ 19891 "Beam returned to normal", refined to the SBND rate change
-t05c_downtime_feb23_start = datetime(2026, 2, 23, 14, 53, 35)  # beam downtime (14 days; ARARA cable work, APSAIA) -- last SBND hit, run 19923
-t05c_downtime_feb23_end = datetime(2026, 3, 9, 18, 27, 12)     # run 19947 first hit, "BNB returning"
-t05d_downtime_mar15_start = datetime(2026, 3, 15, 9, 0, 0)     # beam downtime (HVAC maintenance, DAQ work) -- last SBND hit, run 19952
-t05d_downtime_mar15_end = datetime(2026, 3, 21, 0, 54, 47)     # run 19996 first hit, "BNB is back!"
+t05c_downtime_feb23_start = datetime(2026, 2, 23, 14, 53, 35)  # beam downtime (14 days; ARARA cable work, APSAIA) -- last SBND entry, run 19923
+t05c_downtime_feb23_end = datetime(2026, 3, 9, 18, 27, 12)     # run 19947 first entry, "BNB returning"
+t05d_downtime_mar15_start = datetime(2026, 3, 15, 9, 0, 0)     # beam downtime (HVAC maintenance, DAQ work) -- last SBND entry, run 19952
+t05d_downtime_mar15_end = datetime(2026, 3, 21, 0, 54, 47)     # run 19996 first entry, "BNB is back!"
 t07_linac_outage_min = datetime(2026, 4, 5, 6, 30, 0)          # LINAC outage (AD grid gaps; σ −0.16 ns across)
 t07_linac_outage_max = datetime(2026, 4, 6, 4, 10, 0)          # "beam back but intermittent", "may not be full intensity"
-t07b_bnf_network_end = datetime(2026, 4, 11, 17, 26, 34)       # first hit, run 20067
-t08a_power_outage_end = datetime(2026, 5, 1, 20, 27, 4)        # first hit, run 20102
+t07b_bnf_network_end = datetime(2026, 4, 11, 17, 26, 34)       # first entry, run 20067
+t08a_power_outage_end = datetime(2026, 5, 1, 20, 27, 4)        # first entry, run 20102
 t09_substation_trip = datetime(2026, 5, 2, 0, 30, 0)           # checklist: substation trip, beam down
-t09d_linac_trip = datetime(2026, 5, 22, 2, 58, 14)             # DAQ 20142 "BNB downtime, linac trip and no ETA" -- last hit before the 3-h gap
-t10_comed_outage_min = datetime(2026, 5, 26, 14, 59, 51)       # planned beam-off for ComEd outages (DAQ 20153) -- last SBND hit
+t09d_linac_trip = datetime(2026, 5, 22, 2, 58, 14)             # DAQ 20142 "BNB downtime, linac trip and no ETA" -- last entry before the 3-h gap
+t10_comed_outage_min = datetime(2026, 5, 26, 14, 59, 51)       # planned beam-off for ComEd outages (DAQ 20153) -- last SBND entry
 t10e_intermittent_beam_min = datetime(2026, 6, 10, 13, 2, 45)  # DAQ 20218 "Intermittent beam (one hour down)"
 
 # Production Run 2A = runs 19683-19854 at the start of Run 2, not processed yet (red band): DAQ run log, run 19683 start → run 19854 end

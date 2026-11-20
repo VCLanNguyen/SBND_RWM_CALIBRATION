@@ -1,7 +1,7 @@
-"""Stacked bunch per segment (figure notebooks): production CSV loader, hit → bucket assignment, stacked-bunch fit.
+"""Stacked bunch per segment (figure notebooks): production CSV loader, entry → bucket assignment, stacked-bunch fit.
 
 - `load_calibration`: the production CSV (`sbnd_fine_calibration.csv`) with parsed times / lists + skewness `rl_asym`
-- `apply_to_tree`: every hit of the ntuple → its chunk and nearest saved bucket (core + edge), residual to that bucket
+- `apply_to_tree`: every entry of the ntuple → its chunk and nearest saved bucket (core + edge), residual to that bucket
 - `stacked_bunch_fit`: residuals of many chunks stacked → symmetric + asymmetric Gaussian
 """
 
@@ -49,7 +49,7 @@ def all_buckets(row):
 
 
 def assign_hits(t, row):
-    """Hit times of one chunk → dict of arrays: status, slot, pos, resid.
+    """Entry times of one chunk → dict of arrays: status, slot, pos, resid.
     - Spill window = first bucket − P/2 ≤ t < last bucket + P/2; inside: nearest bucket (ties to the earlier), resid = t − pos
     - Outside: 'before_spill' / 'after_spill'; slot / pos / resid NaN
     """
@@ -67,10 +67,10 @@ def assign_hits(t, row):
 
 
 def apply_to_tree(raw_df, db):
-    """Every hit of `raw_df` (`load_run_raw` + 'opflash_t0_corrected_ns') → copy with `calib_chunk` (row of `db`, −1 = none),
+    """Every entry of `raw_df` (`load_run_raw` + 'opflash_t0_corrected_ns') → copy with `calib_chunk` (row of `db`, −1 = none),
     `calib_status` (`STATUSES`), `calib_slot`, `calib_pos`, `calib_resid`.
-    - `db`: fitted chunks (`load_calibration`); a hit belongs to a chunk if its run is in the row's runs and start ≤ ts ≤ end
-    - Asserts each hit lands in at most one chunk
+    - `db`: fitted chunks (`load_calibration`); an entry belongs to a chunk if its run is in the row's runs and start ≤ ts ≤ end
+    - Asserts each entry lands in at most one chunk
     """
     out = raw_df.copy()
     n = len(out)
@@ -81,7 +81,7 @@ def apply_to_tree(raw_df, db):
     bad = out['opflash_t0_corrected_ns'].values <= BAD_TIME
     for i, row in db.iterrows():
         m = np.isin(run, row['run']) & (ts >= row['start'].to_datetime64()) & (ts <= row['end'].to_datetime64())
-        assert not (chunk[m] >= 0).any(), f'hit in two chunks (row {i})'
+        assert not (chunk[m] >= 0).any(), f'entry in two chunks (row {i})'
         chunk[m] = i
         status[m & bad] = 'bad_time'
         g = m & ~bad
@@ -105,7 +105,7 @@ def _asym_gaussian_chi2ndof(bins_mid, raw_counts, bin_width, popt, mask):
 
 def stacked_bunch_fit(resid, period, window_sigma=2.5, nbins=77):
     """Stacked residuals of one segment → sym + asym Gaussian in a ±`window_sigma` window (2.5σ: 3σ pulls the fit into the tails).
-    - Returns dict: `mid`, `bw`, `n` (counts), `mask` (fit window), `xx` (curve x), `k` (density → hits / bin),
+    - Returns dict: `mid`, `bw`, `n` (counts), `mask` (fit window), `xx` (curve x), `k` (density → entries / bin),
       `ps` / `es` (sym popt / errors), `chi_s`, `pa` / `ea` (asym popt / errors, σL = pa[3], σR = pa[4]), `chi_a`
     """
     b = np.linspace(-period / 2, period / 2, nbins)

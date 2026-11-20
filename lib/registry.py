@@ -3,7 +3,7 @@
 - The registries hold the data (windows, `CHUNK_NOTES`, `SEGMENTS`) and bind these functions to it
 - `SEGMENTS` rows = (number, name, windows, status, beam state, evidence); number None = own beam state, not segmented;
   a chunk takes the innermost row with a window that contains it (`segment_row`)
-- A chunk [start, end] is inside a window (a, b) if start >= a and end <= b + `TRANSITION_SLACK` (chunk edges = its own first / last hit)
+- A chunk [start, end] is inside a window (a, b) if start >= a and end <= b + `TRANSITION_SLACK` (chunk edges = its own first / last entry)
 """
 
 from datetime import timedelta

@@ -4,15 +4,15 @@
 - Bad runs: the registries (`event_timestamps_run{1,2}.BAD_RUNS`)
 - `split_row_by_run`: split a run-group row at a timestamp (registry `FINE_SPLITS`)
 - Row convention (every table here, and every chunk built from them):
-  - `start`/`end` = the row's own first/last hit (exact ns `ts`)
-  - the row's hits = run in `run` list and start <= ts <= end (`calib_fit_helpers.chunk_hits`)
+  - `start`/`end` = the row's own first/last entry (exact ns `ts`)
+  - the row's entries = run in `run` list and start <= ts <= end (`calib_fit_helpers.chunk_hits`)
 """
 
 import pandas as pd
 
 
 def build_run_table(df):
-    """Per-run start/end (first/last hit `ts`, exact ns), duration, entries."""
+    """Per-run start/end (first/last entry `ts`, exact ns), duration, entries."""
     g = df.groupby('run')['ts']
     out = pd.DataFrame({'start': g.min(), 'end': g.max(), 'entries': g.size()}).reset_index()
     out['duration'] = out['end'] - out['start']
@@ -42,10 +42,10 @@ def split_row_by_run(df, ts_df, target_run, split_time, ts_col='ts'):
     - `target_run`: a single run number or list/tuple -- matches any row whose
       'run' list overlaps with it; if multiple rows match, picks the one whose
       [start, end] actually contains `split_time`
-    - Halves: hits with ts < split_time / ts >= split_time (row's runs only); each half's
-      start/end snap to its own first/last hit, entries counted from `ts_df`
+    - Halves: entries with ts < split_time / ts >= split_time (row's runs only); each half's
+      start/end snap to its own first/last entry, entries counted from `ts_df`
     - No-op if `split_time` already falls between two rows of the run, or leaves one half empty
-      (incl. < 1 s before the row start: a split truncated to seconds on a run's first hit)
+      (incl. < 1 s before the row start: a split truncated to seconds on a run's first entry)
     - `split_time`: anything `pd.Timestamp()` accepts
     """
     split_time = pd.Timestamp(split_time)
@@ -78,7 +78,7 @@ def split_row_by_run(df, ts_df, target_run, split_time, ts_col='ts'):
     row = df.loc[idx]
 
     if pd.Timedelta(0) < row['start'] - split_time < pd.Timedelta(seconds=1):
-        return df   # split truncated to seconds, row starts at its first hit: already a boundary
+        return df   # split truncated to seconds, row starts at its first entry: already a boundary
     if not (row['start'] <= split_time <= row['end']):
         raise ValueError(f"split_time {split_time} is outside row's [start, end] range")
 
@@ -119,7 +119,7 @@ def consecutive_groups(runs):
 def build_fine_base(df, dfrun, groups, splits, spotty_min_gap=45, spotty_skip_s=120, counts=False):
     """Fine-calibration base rows: run groups → split at every (run, time) of `splits`, in order → split at every
     mid-run spotty-beam gap >= `spotty_min_gap` min (gap end; skipped within `spotty_skip_s` of a named split).
-    - `df`: raw hits (spotty gaps + split hits); `dfrun`: `build_run_table(df)`; `groups`: run-number groups
+    - `df`: raw entries (spotty gaps + split entries); `dfrun`: `build_run_table(df)`; `groups`: run-number groups
     - `counts=True` → (base, spotty splits applied, spotty gaps found)
     """
     from calib_fit_helpers import find_spotty_beam_gaps

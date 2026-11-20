@@ -42,7 +42,7 @@ CACHE_COLUMNS = RAW_COLUMNS + ('particle_prop_time_ns', 'nu_score', 'bfm_score',
 
 
 def raw_cache_path(run):
-    """Lean-hit cache of the run's ntuple: `<OUT>/run<N>/<ntuple name>_lean.pkl` (output folder, so the input may be read-only)."""
+    """Lean-entry cache of the run's ntuple: `<OUT>/run<N>/<ntuple name>_lean.pkl` (output folder, so the input may be read-only)."""
     name = os.path.basename(paths.RAW_TREE[run]).rsplit('.', 1)[0]
     return f"{(paths.RUN1_SBND, paths.RUN2_SBND)[run - 1]}/{name}_lean.pkl"
 
@@ -65,9 +65,9 @@ def load_run_raw(run, columns=RAW_COLUMNS, cache=True, **kw):
 
 
 def load_raw_df(path, columns=RAW_COLUMNS, step_size='200 MB'):
-    """Load `timingCalibTree` into a per-slice df.
+    """Load `timingCalibTree` into a per-entry df.
     - Reads only `columns` (the module-v2 tree has 71 branches), filtered per read step to keep memory low
-    - Keeps status 0 only (`corr_flash_status`: slice with a corrected flash); trees without the branch are not cut
+    - Keeps status 0 only (`corr_flash_status`: entry with a corrected flash); trees without the branch are not cut
     - Drops rows with an invalid RWM: `tdc_rwm_ns` = 0 (gen2 default) or max uint64 (develop default)
     - De-duplicates on (run, subrun, event, slice_id), first row kept
     - Adds `bunch_corrected` (front-face corrected) and `ts` (from `tdc_rwm_ns`)
@@ -259,7 +259,7 @@ def weak_buckets(hist, centers, positions, line, H, edge_slots, window=8, sig_ha
 
 
 def _require_good_buckets(hist, centers, expected_n=81, min_bucket_counts=15, window=8):
-    """`expected_n` detected buckets, each >= `min_bucket_counts` hits, else ValueError.
+    """`expected_n` detected buckets, each >= `min_bucket_counts` entries, else ValueError.
     - Thin buckets fit falsely tight and wrong (3 counts: chi2/ndof ~0, position off by 112 ns)
     """
     buckets = find_dynamic_buckets(hist, centers, expected_n=expected_n)
@@ -457,8 +457,8 @@ def _fit_asym_gaussian(bins_mid, hist, raw_counts, mask, sym_popt, poisson_weigh
 
 
 def _overlay_residual_histogram(data, positions, window_sigma=3, nbins=39, min_gap_frac=0.5, spill_period=None):
-    """Residual of each hit to its nearest bucket, histogrammed.
-    - Hits kept: `spill_period=None` → first … last bucket centre (outer halves of the outermost buckets dropped; step-4 H);
+    """Residual of each entry to its nearest bucket, histogrammed.
+    - Entries kept: `spill_period=None` → first … last bucket position (outer halves of the outermost buckets dropped; step-4 H);
       `spill_period` = P → first − P/2 ≤ t < last + P/2, ties to the earlier bucket
     - ValueError: non-finite / crossed positions, or a gap < `min_gap_frac` × median spacing (healthy min 0.875)
     - ValueError: binning drops an in-range residual
@@ -531,9 +531,9 @@ def _extract_overlay_H(data, xp, window_sigma=3, nbins=39, target_bin_width=1.0)
 
 
 def fit_bunch_sigma(data, positions, window_sigma=3, nbins=39, spill_period=None):
-    """Bunch width σ: every hit's residual to its nearest bucket (`positions`), stacked, symmetric Gaussian fit.
+    """Bunch width σ: every entry's residual to its nearest bucket (`positions`), stacked, symmetric Gaussian fit.
     - `window_sigma`: core refit within ±`window_sigma`·σ (`_fit_gaussian_windowed`)
-    - `spill_period`: hit window of `_overlay_residual_histogram` (None = first … last bucket centre)
+    - `spill_period`: entry window of `_overlay_residual_histogram` (None = first … last bucket position)
     - Returns (sigma, sigma_err, chi2ndof)
     """
     xp = np.sort(np.asarray(positions))
@@ -581,13 +581,13 @@ def build_fine_chunks(fine_base, df, target_entries, min_entries, weighted_perio
     - `recovery_min_entries`: chunks between it and `min_entries` are kept if they pass the guards
     - Edge buckets (`fit_edge_buckets`) fitted after the period line; core 81, period and intercept unchanged;
       `window_offset` / `intercept` (`add_window_offset`) on top
-    - σ (`fit_bunch_sigma`) and skewness (`fit_bunch_skew`): stack of every saved bucket (core + edges), hits in
+    - σ (`fit_bunch_sigma`) and skewness (`fit_bunch_skew`): stack of every saved bucket (core + edges), entries in
       first − P/2 … last + P/2 (spill window); weak buckets (`weak_buckets`) recorded, not used
     - Returns (fine_df, skipped, skipped_reasons); `production_table` turns them into the production CSV
     - `skipped_reasons`: (start, end, entries, reason, runs) per skipped chunk (`SKIP_COLS`)
     """
     def fit_chunk(chunk):
-        """One chunk's hits → (row dict, None) or (None, skip reason)."""
+        """One chunk's entries → (row dict, None) or (None, skip reason)."""
         bins = np.linspace(400, 2200, 1801)
         try:
             linearpopt, linearpcov, period_chi2ndof, xp_arr, peak_pos_err, background_H = \
@@ -710,9 +710,9 @@ def production_table(fine_df, skipped_reasons, cols, labels):
 
 
 def chunk_hits(raw_df, runs, start, end):
-    """Hits of one row (run group, fine chunk, coarse row): run in `runs`, start <= ts <= end.
-    - start/end are the row's own first/last hit, so both ends are inclusive
-    - The one slice rule used everywhere; returns exactly the hits a chunk was fit on (`fit_entries`)
+    """Entries of one row (run group, fine chunk, coarse row): run in `runs`, start <= ts <= end.
+    - start/end are the row's own first/last entry, so both ends are inclusive
+    - The one selection rule used everywhere; returns exactly the entries a chunk was fit on (`fit_entries`)
     """
     return raw_df[raw_df['run'].isin(runs) & (raw_df['ts'] >= start) & (raw_df['ts'] <= end)]
 

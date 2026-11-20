@@ -2,7 +2,7 @@
 
 - Inputs: one TimingCalibAna ntuple (module v2) per run, any readable path (local or Fermilab, e.g. /exp/sbnd/data/...);
   set by `set_paths` (calibration notebook, Setup)
-- Outputs: `OUT/run1/`, `OUT/run2/` = production table `sbnd_fine_calibration.csv` + lean-hit cache
+- Outputs: `OUT/run1/`, `OUT/run2/` = production table `sbnd_fine_calibration.csv` + lean-entry cache
 - CSV output: `write_csv(df, path)` -- one timestamp format everywhere (pandas `to_csv` picks it per chunk of rows)
 """
 import os
