@@ -9,8 +9,8 @@ Method and results: SBND timing tech note (SBN-doc-XXXXX, TODO), Sec. "RWM Calib
 ```
 calibration/
   calibration.ipynb         ntuple → calibration CSV (one per run)
-  overview.ipynb            σ, σR − σL, period, intercept per time chunk vs time (tech note Fig. 22)
-  segmentation.ipynb        per-segment σ / σR − σL and stacked bunch (tech note Figs. 23-24, Tab. 2)
+  overview.ipynb            σ, σR − σL, period, intercept per time chunk vs time (tech note Fig. 26)
+  segmentation.ipynb        per-segment σ / σR − σL and stacked bunch (tech note Figs. 27-28, Tab. 5)
   apply_calibration.ipynb   how to apply the calibration CSV to an uncalibrated ntuple, step by step
 lib/
   calib_fit_helpers.py      ntuple loader, chunking, bucket finding, period / σ / skewness fits, CSV columns
