@@ -5,7 +5,7 @@
 - `split_row_by_run`: split a run-group row at a timestamp (registry `FINE_SPLITS`)
 - Row convention (every table here, and every chunk built from them):
   - `start`/`end` = the row's own first/last entry (exact ns `ts`)
-  - the row's entries = run in `run` list and start <= ts <= end (`calib_fit_helpers.chunk_hits`)
+  - the row's entries = run in `run` list and start <= ts <= end (`calib_fit_helpers.chunk_entries`)
 """
 
 import pandas as pd

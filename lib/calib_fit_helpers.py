@@ -1,7 +1,7 @@
 """Fitting and data-loading helpers of the SBND RWM timing calibration.
 
 - Ntuple loader (`load_run_raw` / `load_raw_df`), time chunking (`build_fine_chunks`), bucket finding, period / intercept / σ fits
-- Calibration CSV columns + `production_table`
+- Calibration CSV columns + `calibration_table`
 - Imported by `calibration/calibration.ipynb`: `from calib_fit_helpers import *` (`lib/` on `sys.path`)
 """
 
@@ -372,7 +372,7 @@ def _require_good_fits(chi2ndofs, pcovs, popts, max_chi2ndof=20, max_pos_err=5, 
 def peak_by_peak_gaussian_fit(data, bins, weighted_period=False, poisson_weight=False):
     """Period line from 81 per-bucket fits, 2 passes.
     - Pass 1: free H, seeds positions only
-    - H: background of the stacked bunch (`_extract_overlay_H`)
+    - H: background of the stacked bunch (`_stacked_background_H`)
     - Pass 2: fixed H; merged per bucket (`_merge_fit_passes`), then `_require_good_fits`
     - Returns period line (popt = (period, value at fit index 0), pcov), period-fit chi2/ndof, positions + errors, H
     """
@@ -382,7 +382,7 @@ def peak_by_peak_gaussian_fit(data, bins, weighted_period=False, poisson_weight=
     buckets = _require_good_buckets(hist, centers)
 
     _, _, popts1, pcovs1, chi2ndofs1 = fit_peaks(hist, centers, buckets, poisson_weight=poisson_weight)
-    H = _extract_overlay_H(data, np.array([p[2] for p in popts1]))
+    H = _stacked_background_H(data, np.array([p[2] for p in popts1]))
 
     _, _, popts2, pcovs2, chi2ndofs2 = fit_peaks(hist, centers, buckets, poisson_weight=poisson_weight, fixed_H=H)
     popts, pcovs, chi2ndofs = _merge_fit_passes(popts1, pcovs1, chi2ndofs1, popts2, pcovs2, chi2ndofs2)
@@ -456,7 +456,7 @@ def _fit_asym_gaussian(bins_mid, hist, raw_counts, mask, sym_popt, poisson_weigh
     return popt, pcov
 
 
-def _overlay_residual_histogram(data, positions, window_sigma=3, nbins=39, min_gap_frac=0.5, spill_period=None):
+def _stacked_residual_histogram(data, positions, window_sigma=3, nbins=39, min_gap_frac=0.5, spill_period=None):
     """Residual of each entry to its nearest bucket, histogrammed.
     - Entries kept: `spill_period=None` → first … last bucket position (outer halves of the outermost buckets dropped; step-4 H);
       `spill_period` = P → first − P/2 ≤ t < last + P/2, ties to the earlier bucket
@@ -467,16 +467,16 @@ def _overlay_residual_histogram(data, positions, window_sigma=3, nbins=39, min_g
     xp = np.sort(np.asarray(positions))
 
     if not np.all(np.isfinite(xp)):
-        raise ValueError('overlay: non-finite bucket position(s) -- degenerate fit')
+        raise ValueError('stacked bunch: non-finite bucket position(s) -- degenerate fit')
 
     gaps = np.diff(xp)
     period_est = np.median(gaps)
     worst = int(np.argmin(gaps))
     if gaps[worst] <= 0:
-        raise ValueError(f'overlay: bucket positions {worst}/{worst+1} not strictly '
+        raise ValueError(f'stacked bunch: bucket positions {worst}/{worst+1} not strictly '
                           f'increasing (gap={gaps[worst]:.3g}ns) -- duplicate/crossed fit')
     if gaps[worst] < min_gap_frac * period_est:
-        raise ValueError(f'overlay: gap between buckets {worst}/{worst+1} is '
+        raise ValueError(f'stacked bunch: gap between buckets {worst}/{worst+1} is '
                           f'{gaps[worst]:.3g}ns (< {min_gap_frac}x the typical '
                           f'{period_est:.3g}ns spacing) -- degenerate/wobbled bucket '
                           f'fit would corrupt the nearest-neighbor assignment boundary')
@@ -501,19 +501,19 @@ def _overlay_residual_histogram(data, positions, window_sigma=3, nbins=39, min_g
     obin_width = obins[1] - obins[0]
 
     if oraw_counts.sum() != resid.size:
-        raise ValueError(f'overlay: histogram captured {int(oraw_counts.sum())}/'
+        raise ValueError(f'stacked bunch: histogram captured {int(oraw_counts.sum())}/'
                           f'{resid.size} in-range residuals -- binning dropped '
                           f'{resid.size - int(oraw_counts.sum())} point(s)')
 
     return obins_mid, ohist, oraw_counts, obin_width, xp, resid
 
 
-def _extract_overlay_H(data, xp, window_sigma=3, nbins=39, target_bin_width=1.0):
+def _stacked_background_H(data, xp, window_sigma=3, nbins=39, target_bin_width=1.0):
     """Background floor H per bucket per `target_bin_width` bin, for the fixed-H refits.
     - Linear fit to the stacked-bunch bins outside the `window_sigma` core (flat cosmic rate)
     """
     obins_mid, ohist, oraw_counts, obin_width, xp, resid = \
-        _overlay_residual_histogram(data, xp, window_sigma, nbins)
+        _stacked_residual_histogram(data, xp, window_sigma, nbins)
 
     # locates the core only; window_sigma=None still needs an off-peak region
     oguess = [0, max(ohist), 0, 2]
@@ -533,12 +533,12 @@ def _extract_overlay_H(data, xp, window_sigma=3, nbins=39, target_bin_width=1.0)
 def fit_bunch_sigma(data, positions, window_sigma=3, nbins=39, spill_period=None):
     """Bunch width σ: every entry's residual to its nearest bucket (`positions`), stacked, symmetric Gaussian fit.
     - `window_sigma`: core refit within ±`window_sigma`·σ (`_fit_gaussian_windowed`)
-    - `spill_period`: entry window of `_overlay_residual_histogram` (None = first … last bucket position)
+    - `spill_period`: entry window of `_stacked_residual_histogram` (None = first … last bucket position)
     - Returns (sigma, sigma_err, chi2ndof)
     """
     xp = np.sort(np.asarray(positions))
     obins_mid, ohist, oraw_counts, obin_width, xp, resid = \
-        _overlay_residual_histogram(data, xp, window_sigma, nbins, spill_period=spill_period)
+        _stacked_residual_histogram(data, xp, window_sigma, nbins, spill_period=spill_period)
 
     oguess = [0, max(ohist), 0, 2]
     opopt, opcov, omask = _fit_gaussian_windowed(obins_mid, ohist, oraw_counts, oguess, window_sigma)
@@ -555,7 +555,7 @@ def fit_bunch_skew(data, positions, window_sigma=3, nbins=39, poisson_weight=Fal
     """
     try:
         obins_mid, ohist, oraw_counts, obin_width, xp, resid = \
-            _overlay_residual_histogram(data, positions, window_sigma, nbins, spill_period=spill_period)
+            _stacked_residual_histogram(data, positions, window_sigma, nbins, spill_period=spill_period)
         oguess = [0, max(ohist), 0, 2]
         opopt_sym, _, omask = _fit_gaussian_windowed(obins_mid, ohist, oraw_counts, oguess, window_sigma,
                                                      poisson_weight=poisson_weight)
@@ -583,7 +583,7 @@ def build_fine_chunks(fine_base, df, target_entries, min_entries, weighted_perio
       `window_offset` / `intercept` (`add_window_offset`) on top
     - σ (`fit_bunch_sigma`) and skewness (`fit_bunch_skew`): stack of every saved bucket (core + edges), entries in
       first − P/2 … last + P/2 (spill window); weak buckets (`weak_buckets`) recorded, not used
-    - Returns (fine_df, skipped, skipped_reasons); `production_table` turns them into the calibration CSV
+    - Returns (fine_df, skipped, skipped_reasons); `calibration_table` turns them into the calibration CSV
     - `skipped_reasons`: (start, end, entries, reason, runs) per skipped chunk (`SKIP_COLS`)
     """
     def fit_chunk(chunk):
@@ -636,7 +636,7 @@ def build_fine_chunks(fine_base, df, target_entries, min_entries, weighted_perio
     skipped_reasons = []
 
     for _, row in fine_base.iterrows():
-        thisdf = chunk_hits(df, row['run'], row['start'], row['end']).sort_values('ts', kind='stable')
+        thisdf = chunk_entries(df, row['run'], row['start'], row['end']).sort_values('ts', kind='stable')
 
         n_entries = len(thisdf)
         if n_entries == 0:
@@ -645,7 +645,7 @@ def build_fine_chunks(fine_base, df, target_entries, min_entries, weighted_perio
         edges = list(range(0, n_entries, target_entries)) + [n_entries]
         if len(edges) > 2 and (edges[-1] - edges[-2]) < min_entries:
             edges = edges[:-2] + [edges[-1]]
-        # never cut inside one timestamp, so chunk_hits(start, end) recovers the chunk
+        # never cut inside one timestamp, so chunk_entries(start, end) recovers the chunk
         ts_sorted = thisdf['ts'].values
         edges = [edges[0]] + [e + int(np.sum(ts_sorted[e:] == ts_sorted[e - 1])) for e in edges[1:-1]] + [edges[-1]]
         edges = sorted(set(edges))
@@ -671,13 +671,13 @@ def build_fine_chunks(fine_base, df, target_entries, min_entries, weighted_perio
 
 
 # --- Calibration CSV: list / integer columns (skipped chunks get empty lists / cells) ---
-PRODUCTION_LIST_COLS = ('run', 'peak_positions', 'peak_pos_err', 'edge_slots', 'edge_positions', 'edge_pos_err', *WEAK_KEYS)
-PRODUCTION_INT_COLS = ('fit_entries', 'n_buckets', 'window_offset')
+CALIB_LIST_COLS = ('run', 'peak_positions', 'peak_pos_err', 'edge_slots', 'edge_positions', 'edge_pos_err', *WEAK_KEYS)
+CALIB_INT_COLS = ('fit_entries', 'n_buckets', 'window_offset')
 
 
 # --- Calibration CSV columns (explicit whitelist: fixed schema) ---
 # - one list for Run 1 + Run 2
-PRODUCTION_COLS = ['run', 'start', 'end', 'entries', 'fit_entries', 'period', 'period_err',
+CALIB_COLS = ['run', 'start', 'end', 'entries', 'fit_entries', 'period', 'period_err',
                    'intercept', 'intercept_err', 'sigma', 'sigma_err', 'period_chi2ndof',
                    'sigma_chi2ndof', *SKEW_KEYS, 'peak_positions', 'peak_pos_err',
                    'n_buckets', 'window_offset', *EDGE_KEYS, *WEAK_KEYS]
@@ -686,7 +686,7 @@ PRODUCTION_COLS = ['run', 'start', 'end', 'entries', 'fit_entries', 'period', 'p
 LABEL_COLS = ('segment', 'segment_status', 'constants', 'bunch_condition', 'logs')   # `labels=` below
 
 
-def production_table(fine_df, skipped_reasons, cols, labels):
+def calibration_table(fine_df, skipped_reasons, cols, labels):
     """Fitted chunks + skipped chunks (no constants), by start → the calibration CSV rows.
     - `cols`: calibration CSV columns of the fitted chunks; adds `skip_reason` ('' unless skipped)
     - Skipped rows: `run`, `start`, `end`, `entries`, `skip_reason`; fit columns empty, list columns `[]`
@@ -697,10 +697,10 @@ def production_table(fine_df, skipped_reasons, cols, labels):
     sk = pd.DataFrame(skipped_reasons, columns=SKIP_COLS)
     bad = pd.DataFrame({'run': sk['runs'], 'start': sk['start'], 'end': sk['end'], 'entries': sk['entries'],
                         'skip_reason': sk['reason']})
-    for c in PRODUCTION_LIST_COLS:
+    for c in CALIB_LIST_COLS:
         if c in cols and c != 'run':
             bad[c] = [[] for _ in range(len(bad))]
-    for c in PRODUCTION_INT_COLS:
+    for c in CALIB_INT_COLS:
         if c in cols:
             fit[c] = fit[c].astype('Int64')   # keeps integers in the CSV next to the empty bad cells
     out = pd.concat([fit, bad], ignore_index=True)
@@ -709,7 +709,7 @@ def production_table(fine_df, skipped_reasons, cols, labels):
     return out.sort_values('start').reset_index(drop=True)
 
 
-def chunk_hits(raw_df, runs, start, end):
+def chunk_entries(raw_df, runs, start, end):
     """Entries of one row (run group, fine chunk, coarse row): run in `runs`, start <= ts <= end.
     - start/end are the row's own first/last entry, so both ends are inclusive
     - The one entry rule used everywhere; returns exactly the entries a chunk was fit on (`fit_entries`)

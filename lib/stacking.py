@@ -10,7 +10,7 @@ import ast
 import numpy as np
 import pandas as pd
 
-from calib_fit_helpers import (PRODUCTION_INT_COLS, PRODUCTION_LIST_COLS, _fit_asym_gaussian, _fit_gaussian_windowed,
+from calib_fit_helpers import (CALIB_INT_COLS, CALIB_LIST_COLS, _fit_asym_gaussian, _fit_gaussian_windowed,
                                _gaussian_chi2ndof, asymmetric_gaussian)
 
 STATUSES = ('in_spill', 'before_spill', 'after_spill', 'bad_time', 'no_chunk')
@@ -30,9 +30,9 @@ def load_calibration(path, include_bad=False):
     df['segment'] = df['segment'].astype('Int64')
     if not include_bad:
         df = df[df['skip_reason'] == ''].copy()
-    for col in PRODUCTION_LIST_COLS:
+    for col in CALIB_LIST_COLS:
         df[col] = df[col].apply(ast.literal_eval)
-    for col in PRODUCTION_INT_COLS:
+    for col in CALIB_INT_COLS:
         df[col] = df[col].astype('int64' if df[col].notna().all() else 'Int64')
     df['rl_asym'] = df['sigma_r'] - df['sigma_l']
     df['rl_asym_err'] = np.hypot(df['sigma_l_err'], df['sigma_r_err'])
@@ -48,7 +48,7 @@ def all_buckets(row):
     return slots[o], pos[o]
 
 
-def assign_hits(t, row):
+def assign_entries(t, row):
     """Entry times of one chunk → dict of arrays: status, slot, pos, resid.
     - Spill window = first bucket − P/2 ≤ t < last bucket + P/2; inside: nearest bucket (ties to the earlier), resid = t − pos
     - Outside: 'before_spill' / 'after_spill'; slot / pos / resid NaN
@@ -85,7 +85,7 @@ def apply_to_tree(raw_df, db):
         chunk[m] = i
         status[m & bad] = 'bad_time'
         g = m & ~bad
-        a = assign_hits(t[g], row)
+        a = assign_entries(t[g], row)
         status[g] = a['status']
         for k in cols:
             cols[k][g] = a[k]
