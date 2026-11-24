@@ -24,12 +24,10 @@ POISSON_WEIGHT = True
 RWM_MAX_UINT64 = np.iinfo(np.uint64).max   # invalid-timestamp default on sbnobj develop (gen2: 0)
 
 # edge buckets: partly filled buckets just outside the 81-bucket window
-EDGE_MAX_SLOTS = 2          # per side
-EDGE_MAX_PVALUE = 1e-4      # SBND: Poisson excess over the background; ≈ 600 edge slots per run → ≈ 0.06 false
-EDGE_SIG_HALF = 4           # SBND significance window: ±4 bins (1-ns bins) of the period-line slot
-EDGE_KEYS = ('edge_slots', 'edge_positions', 'edge_pos_err')
-# weak buckets: the slot just past the outermost saved bucket on each side (real when summed, not significant per chunk)
-WEAK_KEYS = ('weak_slots', 'weak_positions', 'weak_pvalue')
+EDGE_MAX_BUCKETS = 2        # per side
+EDGE_MAX_PVALUE = 1e-4      # SBND: Poisson excess over the background; ≈ 600 edge candidates per run → ≈ 0.06 false
+EDGE_SIG_HALF = 4           # SBND significance window: ±4 bins (1-ns bins) of the period-line position
+EDGE_KEYS = ('edge_index', 'edge_positions', 'edge_pos_err')
 SKEW_KEYS = ('sigma_l', 'sigma_l_err', 'sigma_r', 'sigma_r_err')   # asym fit to the stacked bunch (`fit_bunch_skew`)
 
 
@@ -106,8 +104,8 @@ def find_dynamic_buckets(hist, centers, expected_n=81, min_distance=9, window=8)
     """Find `expected_n` evenly spaced buckets in `hist`.
     - Height-cut search over loosening steps; median spacing merges double detections
     - Exactly `expected_n` found is kept only if evenly spaced (`_regular_spacing`), else the comb decides
-    - 84 RF slots, 81 filled: weak satellites sit just outside, so one height cut fails at the margin
-    - Returns the `expected_n` contiguous comb slots with the most counts (`_select_best_window`)
+    - 84 RF buckets, 81 filled: weak satellites sit just outside, so one height cut fails at the margin
+    - Returns the `expected_n` contiguous comb grid points with the most counts (`_select_best_window`)
     - No gap-fill: `_require_good_buckets` raises instead
     """
     noise = np.std(hist)
@@ -174,7 +172,7 @@ def _regular_spacing(positions, lo=0.6, hi=1.4):
 
 
 def _select_best_window(hist, centers, buckets, expected_n, window, margin=4):
-    """Comb at the median spacing, `margin` slots past each end; the `expected_n` contiguous slots with the most counts, or None."""
+    """Comb at the median spacing, `margin` grid points past each end; the `expected_n` contiguous grid points with the most counts, or None."""
     spacing = np.median(np.diff(centers[buckets]))
     if not np.isfinite(spacing) or spacing <= 0:
         return None
@@ -182,20 +180,20 @@ def _select_best_window(hist, centers, buckets, expected_n, window, margin=4):
     grid = centers[buckets[0]] - margin * spacing + spacing * np.arange(
         len(buckets) + 2 * margin)
 
-    slots = []
+    points = []
     for pos in grid:
         nbhd = np.where(np.abs(centers - pos) < 0.4 * spacing)[0]
         if len(nbhd) == 0:
             continue
         best = nbhd[np.argmax(hist[nbhd])]
         count = hist[max(0, best - window):best + window].sum()
-        slots.append((best, count))
+        points.append((best, count))
 
-    if len(slots) < expected_n:
+    if len(points) < expected_n:
         return None
 
-    idxs = np.array([s[0] for s in slots])
-    counts = np.array([s[1] for s in slots], dtype=float)
+    idxs = np.array([s[0] for s in points])
+    counts = np.array([s[1] for s in points], dtype=float)
     window_sums = np.array([counts[i:i + expected_n].sum()
                              for i in range(len(counts) - expected_n + 1)])
     best_start = np.argmax(window_sums)
@@ -203,11 +201,11 @@ def _select_best_window(hist, centers, buckets, expected_n, window, margin=4):
 
 
 def fit_edge_buckets(hist, centers, positions, line, H, window=8, poisson_weight=False,
-                     max_slots=EDGE_MAX_SLOTS, max_pvalue=EDGE_MAX_PVALUE, sig_half=EDGE_SIG_HALF,
+                     max_buckets=EDGE_MAX_BUCKETS, max_pvalue=EDGE_MAX_PVALUE, sig_half=EDGE_SIG_HALF,
                      max_chi2ndof=20, max_pos_err=5, max_sigma=5, max_shift=0.3):
-    """Partly filled buckets just outside the core window → dict of `EDGE_KEYS` lists, in slot order (empty if none).
-    - Slots −1, −2 … / n, n + 1 … (fit-index frame, n = len(`positions`)) at the period line `line` = (period, intercept)
-    - Walk outward, stop at the first slot that fails: counts within ±`sig_half` bins a Poisson excess over 2·`sig_half`·`H`
+    """Partly filled buckets just outside the core window → dict of `EDGE_KEYS` lists, in bucket-index order (empty if none).
+    - Candidate bucket indices k = −1, −2 … / n, n + 1 … (fit-index frame, n = len(`positions`)) at the period line `line` = (period, intercept)
+    - Walk outward, stop at the first candidate that fails: counts within ±`sig_half` bins a Poisson excess over 2·`sig_half`·`H`
       (p < `max_pvalue`), fixed-`H` fit (start x0 = line prediction, so a sub-peak can't capture it) passes the core
       guards + within ±`max_shift` period of the line
     - Significance, not a fixed occupancy / count cut: scales with chunk size (thin buckets in small chunks)
@@ -215,9 +213,9 @@ def fit_edge_buckets(hist, centers, positions, line, H, window=8, poisson_weight
     """
     period, intercept = line
     found = []
-    for side in (np.arange(-1, -max_slots - 1, -1), np.arange(len(positions), len(positions) + max_slots)):
-        for slot in side:
-            pred = intercept + period * slot
+    for side in (np.arange(-1, -max_buckets - 1, -1), np.arange(len(positions), len(positions) + max_buckets)):
+        for k in side:
+            pred = intercept + period * k
             p = int(np.argmin(np.abs(centers - pred)))
             if p - window < 0 or p + window > len(hist):
                 break
@@ -233,29 +231,9 @@ def fit_edge_buckets(hist, centers, positions, line, H, window=8, poisson_weight
             if not (np.isfinite(err) and err <= max_pos_err and chi2s[0] <= max_chi2ndof and sig <= max_sigma
                     and abs(popt[2] - pred) <= max_shift * period):
                 break
-            found.append((int(slot), float(popt[2]), float(err)))
+            found.append((int(k), float(popt[2]), float(err)))
     found.sort()
     return {k: [f[i] for f in found] for i, k in enumerate(EDGE_KEYS)}
-
-
-def weak_buckets(hist, centers, positions, line, H, edge_slots, window=8, sig_half=EDGE_SIG_HALF):
-    """Weak buckets = the slot just past the outermost saved bucket on each side → dict of `WEAK_KEYS` lists.
-    - Position = period-line prediction; p = Poisson excess within ±`sig_half` bins over 2·`sig_half`·`H`
-    - Recorded only (not fitted, not stacked); slots outside the histogram are left out
-    """
-    period, intercept = line
-    n = len(positions)
-    lo = min([s for s in edge_slots if s < 0], default=0) - 1
-    hi = max([s for s in edge_slots if s >= n], default=n - 1) + 1
-    weak = []
-    for slot in (lo, hi):
-        pred = intercept + period * slot
-        p = int(np.argmin(np.abs(centers - pred)))
-        if p - window < 0 or p + window > len(hist):
-            continue
-        n4 = int(hist[p - sig_half:p + sig_half].sum())
-        weak.append((int(slot), float(pred), float(poisson.sf(n4 - 1, 2 * sig_half * H))))
-    return {k: [w[i] for w in weak] for i, k in enumerate(WEAK_KEYS)}
 
 
 def _require_good_buckets(hist, centers, expected_n=81, min_bucket_counts=15, window=8):
@@ -582,7 +560,7 @@ def build_fine_chunks(fine_base, df, target_entries, min_entries, weighted_perio
     - Edge buckets (`fit_edge_buckets`) fitted after the period line; core 81, period and intercept unchanged;
       `window_offset` / `intercept` (`add_window_offset`) on top
     - σ (`fit_bunch_sigma`) and skewness (`fit_bunch_skew`): stack of every saved bucket (core + edges), entries in
-      first − P/2 … last + P/2 (spill window); weak buckets (`weak_buckets`) recorded, not used
+      first − P/2 … last + P/2 (spill window)
     - Returns (fine_df, skipped, skipped_reasons); `calibration_table` turns them into the calibration CSV
     - `skipped_reasons`: (start, end, entries, reason, runs) per skipped chunk (`SKIP_COLS`)
     """
@@ -602,7 +580,6 @@ def build_fine_chunks(fine_base, df, target_entries, min_entries, weighted_perio
         # edge buckets: need only the period line + H; saved buckets = core + edges, all in the σ / skewness stack below
         edge_hist, edge_centers = np.histogram(chunk['bunch_corrected'], bins)[0], (bins[:-1] + bins[1:]) / 2
         edges = fit_edge_buckets(edge_hist, edge_centers, xp_arr, linearpopt, background_H, poisson_weight=poisson_weight)
-        weak = weak_buckets(edge_hist, edge_centers, xp_arr, linearpopt, background_H, edges['edge_slots'])
         saved_pos = np.sort(np.concatenate([xp_arr, edges['edge_positions']]))
 
         try:
@@ -625,8 +602,8 @@ def build_fine_chunks(fine_base, df, target_entries, min_entries, weighted_perio
             'period_chi2ndof': period_chi2ndof, 'sigma_chi2ndof': sigma_chi2ndof,
             **skew,
             'peak_positions': xp_arr.tolist(), 'peak_pos_err': peak_pos_err.tolist(),
-            'n_buckets': len(xp_arr) + len(edges['edge_slots']),
-            **edges, **weak,
+            'n_buckets': len(xp_arr) + len(edges['edge_index']),
+            **edges,
         }, None
 
     def too_few(n):
@@ -665,13 +642,13 @@ def build_fine_chunks(fine_base, df, target_entries, min_entries, weighted_perio
     fine_df = pd.DataFrame(fine_rows)
     if len(fine_df):
         fine_df = fine_df.sort_values('start', kind='stable').reset_index(drop=True)
-        add_window_offset(fine_df)   # fixed slot frame + intercept over this call's chunks
+        add_window_offset(fine_df)   # fixed bucket frame + intercept over this call's chunks
     skipped_reasons.sort(key=lambda s: s[0])
     return fine_df, len(skipped_reasons), skipped_reasons
 
 
 # --- Calibration CSV: list / integer columns (skipped chunks get empty lists / cells) ---
-CALIB_LIST_COLS = ('run', 'peak_positions', 'peak_pos_err', 'edge_slots', 'edge_positions', 'edge_pos_err', *WEAK_KEYS)
+CALIB_LIST_COLS = ('run', 'peak_positions', 'peak_pos_err', 'edge_index', 'edge_positions', 'edge_pos_err')
 CALIB_INT_COLS = ('fit_entries', 'n_buckets', 'window_offset')
 
 
@@ -680,7 +657,7 @@ CALIB_INT_COLS = ('fit_entries', 'n_buckets', 'window_offset')
 CALIB_COLS = ['run', 'start', 'end', 'entries', 'fit_entries', 'period', 'period_err',
                    'intercept', 'intercept_err', 'sigma', 'sigma_err', 'period_chi2ndof',
                    'sigma_chi2ndof', *SKEW_KEYS, 'peak_positions', 'peak_pos_err',
-                   'n_buckets', 'window_offset', *EDGE_KEYS, *WEAK_KEYS]
+                   'n_buckets', 'window_offset', *EDGE_KEYS]
 
 
 LABEL_COLS = ('segment', 'segment_status', 'constants', 'bunch_condition', 'logs')   # `labels=` below
@@ -731,7 +708,7 @@ def find_spotty_beam_gaps(raw_df, min_gap_minutes=10):
                         ).sort_values('gap_start').reset_index(drop=True)
 
 
-# --- fixed slot frame across chunks: window offset + intercept ---
+# --- fixed bucket frame across chunks: window offset + intercept ---
 
 def line_terms(popt, pcov):
     """Period-line terms of one fit (popt = (period, value at fit index 0)) → `line0`, `line0_err`, `line_cov` (cov period, line0)."""
@@ -755,8 +732,8 @@ def unwrap_bucket0(bucket0, period):
 
 def add_window_offset(df, time_col='start', good=None):
     """`window_offset` + `intercept` / `intercept_err` columns, frame fixed over the rows (`unwrap_bucket0` of `line0`, `time_col` order).
-    - `window_offset`: slot of fit index 0; physical slot = fit index (or edge slot) + `window_offset`; same number = same bucket in every row
-    - `intercept`: period line at slot 0 of the fixed frame = `line0` − `window_offset` · period; error from the line covariance
+    - `window_offset`: fixed-frame bucket number of fit index 0; bucket number = fit index (or edge index) + `window_offset`; same number = same bucket in every row
+    - `intercept`: period line at bucket 0 of the fixed frame = `line0` − `window_offset` · period; error from the line covariance
       (= spill position from all 81 buckets: no one-period window jumps, not pulled by a half-filled first bucket)
     - `good`: rows to unwrap over (default all); others get NA
     """

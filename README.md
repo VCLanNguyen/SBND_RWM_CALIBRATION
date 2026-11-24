@@ -40,8 +40,8 @@ lib/
 |---|---|---|
 | `run1_timing_calib_ntuple.root` | Run 1 input ntuple (1.7 GB) | `ee97140b68395c09360ca5ece60dff20` |
 | `run2_timing_calib_ntuple.root` | Run 2 input ntuple (1.3 GB) | `85b9ce86b14592f0d08889a36c015225` |
-| `run1_calibration.csv` | Run 1 calibration CSV = `calibration.ipynb` output `run1/sbnd_fine_calibration.csv` from these ntuples | `276e6ea68ec1bda1ca81e8fde97d9532` |
-| `run2_calibration.csv` | Run 2 calibration CSV (same, Run 2) | `cc156df89a5d95069efcc09c667eadae` |
+| `run1_calibration.csv` | Run 1 calibration CSV = `calibration.ipynb` output `run1/sbnd_fine_calibration.csv` from these ntuples | `453ec593118348123679625110a22eda` |
+| `run2_calibration.csv` | Run 2 calibration CSV (same, Run 2) | `4df0b9da6c8441507e68dcb96362e6b0` |
 
 - The calibration CSVs are the ones used in the tech note; to apply them directly, point `CALIB_CSV` in `apply_calibration.ipynb` at them
 - How the ntuples were made (module, release, input datasets): `calibration/calibration.ipynb`, Setup › "Where the Input Ntuples Come From"
@@ -88,9 +88,8 @@ One row per time chunk, in time order; uncalibrated time chunks are kept with em
 | `period`, `intercept` (+ `_err`) | bucket spacing [ns]; position of bucket 0 of the fixed bucket frame [ns] |
 | `sigma`, `sigma_l`, `sigma_r` (+ `_err`) | bunch width σ; σL / σR of the asymmetric fit (skewness σR − σL) [ns] |
 | `peak_positions`, `peak_pos_err` | positions of the 81 core buckets [ns] |
-| `edge_slots`, `edge_positions`, `edge_pos_err` | partly filled edge buckets (≤ 2 per side): slot and position |
-| `window_offset` | bucket number = fit index (or edge slot) + `window_offset` (same number = same RF bucket in every time chunk) |
-| `weak_slots`, `weak_positions`, `weak_pvalue` | next slot past the outermost bucket on each side: recorded, not used |
+| `edge_index`, `edge_positions`, `edge_pos_err` | partly filled edge buckets (≤ 2 per side): bucket index k (−2, −1 / 81, 82) and position |
+| `window_offset` | bucket number = fit index (or edge index) + `window_offset` (same number = same RF bucket in every time chunk) |
 | `period_chi2ndof`, `sigma_chi2ndof`, `n_buckets`, `fit_entries` | fit quality, buckets used, entries fitted |
 | `segment`, `segment_status`, `constants`, `bunch_condition`, `logs`, `skip_reason` | stacking segment (1, 2, …), its status (Stable / Unstable), Yes / LowStats / FitFailed, beam condition and supporting log, why skipped |
 

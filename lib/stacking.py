@@ -40,21 +40,21 @@ def load_calibration(path, include_bad=False):
 
 
 def all_buckets(row):
-    """Core + edge buckets of one calibration CSV row → (slots, positions), position order, fixed frame (`window_offset`)."""
+    """Core + edge buckets of one calibration CSV row → (bucket numbers, positions), position order, fixed frame (`window_offset`)."""
     core = np.arange(len(row['peak_positions']))
-    slots = np.concatenate([core, row['edge_slots']]).astype(int) + int(row['window_offset'])
+    buckets = np.concatenate([core, row['edge_index']]).astype(int) + int(row['window_offset'])
     pos = np.concatenate([row['peak_positions'], row['edge_positions']])
     o = np.argsort(pos)
-    return slots[o], pos[o]
+    return buckets[o], pos[o]
 
 
 def assign_entries(t, row):
-    """Entry times of one chunk → dict of arrays: status, slot, pos, resid.
+    """Entry times of one chunk → dict of arrays: status, bucket (number), pos, resid.
     - Spill window = first bucket − P/2 ≤ t < last bucket + P/2; inside: nearest bucket (ties to the earlier), resid = t − pos
-    - Outside: 'before_spill' / 'after_spill'; slot / pos / resid NaN
+    - Outside: 'before_spill' / 'after_spill'; bucket / pos / resid NaN
     """
     t = np.asarray(t, dtype=float)
-    slots, pos = all_buckets(row)
+    buckets, pos = all_buckets(row)
     lo, hi = pos[0] - row['period'] / 2, pos[-1] + row['period'] / 2
     j = np.clip(np.searchsorted(pos, t), 1, len(pos) - 1)
     k = np.where(np.abs(t - pos[j - 1]) <= np.abs(t - pos[j]), j - 1, j)
@@ -62,20 +62,20 @@ def assign_entries(t, row):
     status = np.where(t < lo, 'before_spill', 'after_spill').astype(object)
     status[inside] = 'in_spill'
     nan = np.full(len(t), np.nan)
-    return {'status': status, 'slot': np.where(inside, slots[k], nan), 'pos': np.where(inside, pos[k], nan),
+    return {'status': status, 'bucket': np.where(inside, buckets[k], nan), 'pos': np.where(inside, pos[k], nan),
             'resid': np.where(inside, t - pos[k], nan)}
 
 
 def apply_to_tree(raw_df, db):
     """Every entry of `raw_df` (`load_run_raw` + 'opflash_t0_corrected_ns') → copy with `calib_chunk` (row of `db`, −1 = none),
-    `calib_status` (`STATUSES`), `calib_slot`, `calib_pos`, `calib_resid`.
+    `calib_status` (`STATUSES`), `calib_bucket`, `calib_pos`, `calib_resid`.
     - `db`: fitted chunks (`load_calibration`); an entry belongs to a chunk if its run is in the row's runs and start ≤ ts ≤ end
     - Asserts each entry lands in at most one chunk
     """
     out = raw_df.copy()
     n = len(out)
     chunk = np.full(n, -1)
-    cols = {k: np.full(n, np.nan) for k in ('slot', 'pos', 'resid')}
+    cols = {k: np.full(n, np.nan) for k in ('bucket', 'pos', 'resid')}
     status = np.full(n, 'no_chunk', dtype=object)
     run, ts, t = out['run'].values, out['ts'].values, out['bunch_corrected'].values
     bad = out['opflash_t0_corrected_ns'].values <= BAD_TIME
