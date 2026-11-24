@@ -1,7 +1,7 @@
 """Fitting and data-loading helpers of the SBND RWM timing calibration.
 
 - Ntuple loader (`load_run_raw` / `load_raw_df`), time chunking (`build_fine_chunks`), bucket finding, period / intercept / σ fits
-- Production CSV columns + `production_table`
+- Calibration CSV columns + `production_table`
 - Imported by `calibration/calibration.ipynb`: `from calib_fit_helpers import *` (`lib/` on `sys.path`)
 """
 
@@ -16,7 +16,7 @@ from scipy.stats import poisson
 
 import paths
 
-# production fit config
+# fit config
 SIGMA_FIT_WINDOW = 3
 PERIOD_WEIGHTED = True
 POISSON_WEIGHT = True
@@ -372,7 +372,7 @@ def _require_good_fits(chi2ndofs, pcovs, popts, max_chi2ndof=20, max_pos_err=5, 
 def peak_by_peak_gaussian_fit(data, bins, weighted_period=False, poisson_weight=False):
     """Period line from 81 per-bucket fits, 2 passes.
     - Pass 1: free H, seeds positions only
-    - H: overlay background (`_extract_overlay_H`)
+    - H: background of the stacked bunch (`_extract_overlay_H`)
     - Pass 2: fixed H; merged per bucket (`_merge_fit_passes`), then `_require_good_fits`
     - Returns period line (popt = (period, value at fit index 0), pcov), period-fit chi2/ndof, positions + errors, H
     """
@@ -510,7 +510,7 @@ def _overlay_residual_histogram(data, positions, window_sigma=3, nbins=39, min_g
 
 def _extract_overlay_H(data, xp, window_sigma=3, nbins=39, target_bin_width=1.0):
     """Background floor H per bucket per `target_bin_width` bin, for the fixed-H refits.
-    - Linear fit to the overlay bins outside the `window_sigma` core (flat cosmic rate)
+    - Linear fit to the stacked-bunch bins outside the `window_sigma` core (flat cosmic rate)
     """
     obins_mid, ohist, oraw_counts, obin_width, xp, resid = \
         _overlay_residual_histogram(data, xp, window_sigma, nbins)
@@ -583,7 +583,7 @@ def build_fine_chunks(fine_base, df, target_entries, min_entries, weighted_perio
       `window_offset` / `intercept` (`add_window_offset`) on top
     - σ (`fit_bunch_sigma`) and skewness (`fit_bunch_skew`): stack of every saved bucket (core + edges), entries in
       first − P/2 … last + P/2 (spill window); weak buckets (`weak_buckets`) recorded, not used
-    - Returns (fine_df, skipped, skipped_reasons); `production_table` turns them into the production CSV
+    - Returns (fine_df, skipped, skipped_reasons); `production_table` turns them into the calibration CSV
     - `skipped_reasons`: (start, end, entries, reason, runs) per skipped chunk (`SKIP_COLS`)
     """
     def fit_chunk(chunk):
@@ -670,12 +670,12 @@ def build_fine_chunks(fine_base, df, target_entries, min_entries, weighted_perio
     return fine_df, len(skipped_reasons), skipped_reasons
 
 
-# --- Production CSV: list / integer columns (skipped chunks get empty lists / cells) ---
+# --- Calibration CSV: list / integer columns (skipped chunks get empty lists / cells) ---
 PRODUCTION_LIST_COLS = ('run', 'peak_positions', 'peak_pos_err', 'edge_slots', 'edge_positions', 'edge_pos_err', *WEAK_KEYS)
 PRODUCTION_INT_COLS = ('fit_entries', 'n_buckets', 'window_offset')
 
 
-# --- Production CSV columns (explicit whitelist: production schema fixed) ---
+# --- Calibration CSV columns (explicit whitelist: fixed schema) ---
 # - one list for Run 1 + Run 2
 PRODUCTION_COLS = ['run', 'start', 'end', 'entries', 'fit_entries', 'period', 'period_err',
                    'intercept', 'intercept_err', 'sigma', 'sigma_err', 'period_chi2ndof',
@@ -687,8 +687,8 @@ LABEL_COLS = ('segment', 'segment_status', 'constants', 'bunch_condition', 'logs
 
 
 def production_table(fine_df, skipped_reasons, cols, labels):
-    """Fitted chunks + skipped chunks (no constants), by start → the production CSV rows.
-    - `cols`: production columns of the fitted chunks; adds `skip_reason` ('' unless skipped)
+    """Fitted chunks + skipped chunks (no constants), by start → the calibration CSV rows.
+    - `cols`: calibration CSV columns of the fitted chunks; adds `skip_reason` ('' unless skipped)
     - Skipped rows: `run`, `start`, `end`, `entries`, `skip_reason`; fit columns empty, list columns `[]`
     - `labels(start, end, skip_reason)` → dict of `LABEL_COLS` (`event_timestamps_run{1,2}.chunk_labels`)
     """
@@ -712,7 +712,7 @@ def production_table(fine_df, skipped_reasons, cols, labels):
 def chunk_hits(raw_df, runs, start, end):
     """Entries of one row (run group, fine chunk, coarse row): run in `runs`, start <= ts <= end.
     - start/end are the row's own first/last entry, so both ends are inclusive
-    - The one selection rule used everywhere; returns exactly the entries a chunk was fit on (`fit_entries`)
+    - The one entry rule used everywhere; returns exactly the entries a chunk was fit on (`fit_entries`)
     """
     return raw_df[raw_df['run'].isin(runs) & (raw_df['ts'] >= start) & (raw_df['ts'] <= end)]
 

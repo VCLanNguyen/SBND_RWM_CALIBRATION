@@ -2,7 +2,7 @@
 
 - Importing applies the common rcParams (`STYLE`); the notebooks then set the figure font sizes
 - Per-chunk series: one flat line + error band per chunk; grey = transition chunk of the run registry (`ev=`)
-- Segment colours (`SEG_COLORS`) and the legend handles of the registry overlays (`CONDITION_HANDLES*`)
+- Segment colours (`SEG_COLORS`) and the legend handles of the beam-condition markers (`CONDITION_HANDLES*`)
 """
 
 import pandas as pd
@@ -35,7 +35,7 @@ SEG_COLORS = {'before_a': 'tab:blue', 'before_c': 'tab:olive', 'during': 'tab:or
               'wide': 'tab:cyan', 'normal_a': 'tab:green', 'normal_b': 'tab:brown', 'narrow': 'tab:pink',
               **{s: UNSTABLE_COLOR for s in _ev1.UNSTABLE_SEGMENTS + _ev2.UNSTABLE_SEGMENTS}}
 
-# legend handles of the registry overlays (`ev.plot_events`, `ev.plot_extended_downtime`, ...)
+# legend handles of the beam-condition markers (`ev.plot_events`, `ev.plot_extended_downtime`, ...)
 CONDITION_HANDLES = [
     Patch(color='grey', alpha=0.3, label='Beam Downtime >24h'),
     Patch(color='tab:purple', alpha=0.3, label='Bunch Rotation Commissioning'),

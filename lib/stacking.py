@@ -1,6 +1,6 @@
-"""Stacked bunch per segment (figure notebooks): production CSV loader, entry → bucket assignment, stacked-bunch fit.
+"""Stacked bunch per segment (figure notebooks): calibration CSV loader, entry → bucket assignment, stacked-bunch fit.
 
-- `load_calibration`: the production CSV (`sbnd_fine_calibration.csv`) with parsed times / lists + skewness `rl_asym`
+- `load_calibration`: the calibration CSV (`sbnd_fine_calibration.csv`) with parsed times / lists + skewness `rl_asym`
 - `apply_to_tree`: every entry of the ntuple → its chunk and nearest saved bucket (core + edge), residual to that bucket
 - `stacked_bunch_fit`: residuals of many chunks stacked → symmetric + asymmetric Gaussian
 """
@@ -18,7 +18,7 @@ BAD_TIME = -9000   # opflash_t0_corrected_ns ≤ this = no corrected time (−99
 
 
 def load_calibration(path, include_bad=False):
-    """Production CSV → DataFrame by start; times / list columns parsed, floats read exactly (round trip).
+    """Calibration CSV → DataFrame by start; times / list columns parsed, floats read exactly (round trip).
     - `include_bad=False`: fitted chunks only (empty `skip_reason`)
     - Adds `rl_asym` = σR − σL and `rl_asym_err` (σL, σR errors in quadrature)
     """
@@ -40,7 +40,7 @@ def load_calibration(path, include_bad=False):
 
 
 def all_buckets(row):
-    """Core + edge buckets of one production row → (slots, positions), position order, fixed frame (`window_offset`)."""
+    """Core + edge buckets of one calibration CSV row → (slots, positions), position order, fixed frame (`window_offset`)."""
     core = np.arange(len(row['peak_positions']))
     slots = np.concatenate([core, row['edge_slots']]).astype(int) + int(row['window_offset'])
     pos = np.concatenate([row['peak_positions'], row['edge_positions']])

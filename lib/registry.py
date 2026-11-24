@@ -47,7 +47,7 @@ def is_unsegmented(segments, start, end):
 
 
 def chunk_labels(notes, segments, start, end, skip_reason=''):
-    """Production label columns of one chunk [start, end] (`calib_fit_helpers.production_table(labels=)`).
+    """Calibration CSV label columns of one chunk [start, end] (`calib_fit_helpers.production_table(labels=)`).
     - `notes` = registry `CHUNK_NOTES` ((a, b, bunch_condition, logs), ...): a chunk inside a window takes its label
     - segment: number of its `segments` row (`segment_row`), None = no constants or not segmented
     - segment_status: Stable / Unstable from the `segments` row, '' when no segment

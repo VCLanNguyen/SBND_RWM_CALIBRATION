@@ -15,7 +15,7 @@ calibration/
 lib/
   calib_fit_helpers.py      ntuple loader, chunking, bucket finding, period / σ / skewness fits, CSV columns
   run_table.py              run table, run groups and splits
-  event_timestamps_run1.py  Run 1 registry: hard boundaries, bad runs, segments, chunk labels (+ figure overlays)
+  event_timestamps_run1.py  Run 1 registry: hard boundaries, bad runs, segments, chunk labels (+ figure markers)
   event_timestamps_run2.py  Run 2 registry (same layout)
   registry.py               window / label logic shared by the two registries
   stacking.py               figures: CSV loader, entry → bucket assignment, stacked-bunch fit

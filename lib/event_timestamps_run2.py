@@ -32,7 +32,7 @@ t05b_beam_return_feb21_settled = datetime(2026, 2, 21, 19, 9, 20)  # [SPLIT] set
 t06_narrow_bunch1_on = datetime(2026, 3, 30, 17, 37, 39)      # [SPLIT] narrow bunch 1 on: AD σ 1.21 → 0.70; SBND width −0.20 ns
 t06_narrow_bunch1_gap_min = datetime(2026, 3, 30, 18, 19, 41) # back to normal inside run 20011: AD σ 0.71 → 1.22
 t06_narrow_bunch1_gap_max = datetime(2026, 3, 30, 19, 55, 23) # narrow again: AD σ 1.38 → 0.74
-t06_narrow_bunch1_beam_return = datetime(2026, 3, 30, 20, 44, 50)   # [SPLIT] run 20011 first entry after a 28.9-min beam gap inside narrow piece 2
+t06_narrow_bunch1_beam_return = datetime(2026, 3, 30, 20, 44, 50)   # [SPLIT] run 20011 first entry after a 28.9-min beam gap inside narrow-bunch episode 2
 t06_narrow_bunch1_off = datetime(2026, 3, 30, 21, 50, 41)     # [SPLIT] narrow bunch 1 off: AD σ 0.75 → 1.33; SBND width +0.26 ns
 t06a_narrow_bunch2_on = datetime(2026, 3, 31, 14, 20, 28)     # [SPLIT] narrow bunch 2 on: AD σ 1.33 → 0.69; DAQ "~30 min before the end of 20014"
 t06a_narrow_bunch2_sbnd_narrow = datetime(2026, 3, 31, 14, 30, 2)   # [SPLIT] first entry after 14:30 (run 20014): SBND narrow from here
@@ -142,7 +142,7 @@ def stack_segment(start, end):
     return _reg.stack_segment(SEGMENTS, start, end)
 
 
-# --- Production label columns (as Run 1) ---
+# --- Calibration CSV label columns (as Run 1) ---
 # - segment: 1-4 = wide / normal_a / normal_b / narrow (`SEGMENTS`); None = no constants or not segmented; segment_status Stable / Unstable, '' when no segment
 # - CHUNK_NOTES = (start, end, bunch_condition, logs): reviewed chunks + skipped chunks; a chunk inside a window takes its label
 #   (Width Changing = bunch width, Step Changing = bunch position); otherwise fitted → 'Stable', skipped → '-'
@@ -181,11 +181,11 @@ CHUNK_NOTES = (
 
 
 def chunk_labels(start, end, skip_reason=''):
-    """Production label columns of one chunk [start, end] (`registry.chunk_labels`)."""
+    """Calibration CSV label columns of one chunk [start, end] (`registry.chunk_labels`)."""
     return _reg.chunk_labels(CHUNK_NOTES, SEGMENTS, start, end, skip_reason)
 
 
-# ===== Figures (overview / segmentation notebooks): transition chunks + beam-condition overlays =====
+# ===== Figures (overview / segmentation notebooks): transition chunks + beam-condition markers =====
 # - Not used by the calibration itself
 
 t01_downtime_nov_start = datetime(2025, 11, 5, 16, 40, 0)      # 2-week downtime (AD grid gap); DAQ 19689 "power outage in Batavia site"

@@ -139,7 +139,7 @@ def stack_segment(start, end):
     return _reg.stack_segment(SEGMENTS, start, end)
 
 
-# --- Production label columns ---
+# --- Calibration CSV label columns ---
 # - segment: 1-5 = before_a / before_b / before_c / during / after (`SEGMENTS`), None = no constants or not segmented
 # - segment_status: Stable / Unstable (`SEGMENTS`), '' when no segment
 # - constants: Yes / LowStats / FitFailed (from `skip_reason`)
@@ -168,11 +168,11 @@ CHUNK_NOTES = (
 
 
 def chunk_labels(start, end, skip_reason=''):
-    """Production label columns of one chunk [start, end] (`registry.chunk_labels`)."""
+    """Calibration CSV label columns of one chunk [start, end] (`registry.chunk_labels`)."""
     return _reg.chunk_labels(CHUNK_NOTES, SEGMENTS, start, end, skip_reason)
 
 
-# ===== Figures (overview / segmentation notebooks): transition chunks + beam-condition overlays =====
+# ===== Figures (overview / segmentation notebooks): transition chunks + beam-condition markers =====
 # - Not used by the calibration itself
 
 t02_downtime_feb_start = datetime(2025, 2, 18, 13, 50, 0)     # beam downtime -- run 18255 last entry (DAQ "beam down" 13:54)
@@ -206,7 +206,7 @@ TRANSITION_WINDOWS = (
     (t14_llrf1, t14a_llrf1_settled),
     (t15_llrf2_prelude_min, t15_llrf2_prelude_max),
     (t15a_spottybeam1_max, t16_llrf2),
-    (t18_llrf3_flip_back, t18_llrf3_settled),   # flip-back piece only; 14:40 → 18:31 = stable digital state
+    (t18_llrf3_flip_back, t18_llrf3_settled),   # flip-back part only; 14:40 → 18:31 = stable digital state
     (t19a_may22_phase_flip_min, t19a_may22_phase_flip_max),
     (t21_llrf4, t21_llrf4_settled),
     (t26a_jun30_widening_start, t28b_waterpump_ramp_end),
@@ -273,7 +273,7 @@ def plot_bunch_rotation(ax):
 
 
 def plot_events(ax):
-    """All Run 1 beam-condition overlays: rotation, LLRF, offset steps, studies."""
+    """All Run 1 beam-condition markers: rotation, LLRF, offset steps, studies."""
     plot_bunch_rotation(ax)
     plot_llrf(ax)
     plot_waterpump(ax)
